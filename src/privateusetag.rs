@@ -12,7 +12,7 @@ impl<T: AsRef<[u8]>> PrivateUseTag<T> {
 	#[inline]
 	pub fn new(t: T) -> Result<PrivateUseTag<T>, T> {
 		let bytes = t.as_ref();
-		if crate::parse::privateuse(bytes, 0) == bytes.len() {
+		if bytes.len() > 0 && crate::parse::privateuse(bytes, 0) == bytes.len() {
 			Ok(PrivateUseTag {
 				data: t
 			})

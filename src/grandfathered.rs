@@ -1,4 +1,5 @@
 use std::convert::TryFrom;
+use crate::Language;
 
 pub struct InvalidGrandfatheredTag;
 
@@ -70,6 +71,23 @@ impl GrandfatheredTag {
 		match Self::try_from(t.as_ref()) {
 			Ok(tag) => Ok(tag),
 			Err(InvalidGrandfatheredTag) => Err(t)
+		}
+	}
+
+	pub fn language(&self) -> Option<&Language> {
+		unsafe {
+			match self {
+				ArtLojban => Some(Language::new_unchecked(b"art")),
+				CelGaulish => Some(Language::new_unchecked(b"cel")),
+				NoBok => Some(Language::new_unchecked(b"no")),
+				NoNyn => Some(Language::new_unchecked(b"no")),
+				ZhGuoyu => Some(Language::new_unchecked(b"zh")),
+				ZhHakka => Some(Language::new_unchecked(b"zh")),
+				ZhMin => Some(Language::new_unchecked(b"zh")),
+				ZhMinNan => Some(Language::new_unchecked(b"zh")),
+				ZhXiang => Some(Language::new_unchecked(b"zh")),
+				_ => None
+			}
 		}
 	}
 
