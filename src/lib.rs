@@ -13,113 +13,38 @@ use std::{
 	ops::Deref
 };
 
+mod error;
 mod parse;
-pub mod privateusetag;
-pub mod langtag;
+pub mod raw;
 mod grandfathered;
 
+pub use error::*;
 pub use grandfathered::*;
 
-pub enum RawLanguageTag<T> {
-	Normal(langtag::LangTag<T>),
-	PrivateUse(privateusetag::PrivateUseTag<T>),
-	Grandfathered(GrandfatheredTag)
+impl LanguageTagBuf {
+	#[inline]
+	pub fn parse<T: AsRef<[u8]> + ?Sized>(t: &T) -> Result<LanguageTagBuf, parse::Error> {
+		let mut buffer = Vec::new();
+		buffer.copy_from_slice(t.as_ref());
+		Self::new(buffer)
+	}
 }
 
-impl<'a> RawLanguageTag<&'a [u8]> {
+impl<'a> LanguageTag<'a> {
 	#[inline]
-	pub fn parse<T: AsRef<[u8]> + ?Sized>(t: &'a T) -> Result<RawLanguageTag<&'a [u8]>, parse::Error> {
+	pub fn parse<T: AsRef<[u8]> + ?Sized>(t: &'a T) -> Result<LanguageTag<'a>, parse::Error> {
 		Self::new(t.as_ref())
 	}
 }
 
-impl<T: AsRef<[u8]>> RawLanguageTag<T> {
-	#[inline]
-	pub fn new(t: T) -> Result<RawLanguageTag<T>, parse::Error> {
-		match GrandfatheredTag::new(t) {
-			Ok(tag) => Ok(RawLanguageTag::Grandfathered(tag)),
-			Err(t) => match privateusetag::PrivateUseTag::new(t) {
-				Ok(tag) => Ok(RawLanguageTag::PrivateUse(tag)),
-				Err(t) => {
-					Ok(RawLanguageTag::Normal(langtag::LangTag::new(t)?))
-				}
-			}
-		}
-	}
+pub type LangTag<'a> = raw::LangTag<&'a [u8]>;
+pub type LangTagBuf = raw::LangTag<Vec<u8>>;
 
-	#[inline]
-	pub fn as_bytes(&self) -> &[u8] {
-		match self {
-			RawLanguageTag::Normal(tag) => tag.as_bytes(),
-			RawLanguageTag::PrivateUse(tag) => tag.as_bytes(),
-			RawLanguageTag::Grandfathered(tag) => tag.as_bytes()
-		}
-	}
+pub type PrivateUseTag<'a> = raw::PrivateUseTag<&'a [u8]>;
+pub type PrivateUseTagBuf = raw::PrivateUseTag<Vec<u8>>;
 
-	#[inline]
-	pub fn as_str(&self) -> &str {
-		match self {
-			RawLanguageTag::Normal(tag) => tag.as_str(),
-			RawLanguageTag::PrivateUse(tag) => tag.as_str(),
-			RawLanguageTag::Grandfathered(tag) => tag.as_str()
-		}
-	}
-
-	#[inline]
-	pub fn language(&self) -> Option<&Language> {
-		match self {
-			RawLanguageTag::Normal(tag) => Some(tag.language()),
-			RawLanguageTag::PrivateUse(_) => None,
-			RawLanguageTag::Grandfathered(tag) => tag.language()
-		}
-	}
-}
-
-impl<T: AsRef<[u8]>> AsRef<[u8]> for RawLanguageTag<T> {
-	#[inline]
-	fn as_ref(&self) -> &[u8] {
-		self.as_bytes()
-	}
-}
-
-impl<T: AsRef<[u8]>> AsRef<str> for RawLanguageTag<T> {
-	#[inline]
-	fn as_ref(&self) -> &str {
-		self.as_str()
-	}
-}
-
-impl<T: AsRef<[u8]>, U: AsRef<[u8]>> PartialEq<U> for RawLanguageTag<T> {
-	#[inline]
-	fn eq(&self, other: &U) -> bool {
-		case_insensitive_eq(self.as_bytes(), other.as_ref())
-	}
-}
-
-impl<T: AsRef<[u8]>> Eq for RawLanguageTag<T> { }
-
-impl<T: AsRef<[u8]>> fmt::Display for RawLanguageTag<T> {
-	#[inline]
-	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-		fmt::Display::fmt(self.as_str(), f)
-	}
-}
-
-impl<T: AsRef<[u8]>> fmt::Debug for RawLanguageTag<T> {
-	#[inline]
-	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-		fmt::Debug::fmt(self.as_str(), f)
-	}
-}
-
-pub type LangTag<'a> = langtag::LangTag<&'a [u8]>;
-pub type LangTagBuf = langtag::LangTag<Vec<u8>>;
-
-pub type PrivateUseTag<'a> = privateusetag::PrivateUseTag<&'a [u8]>;
-pub type PrivateUseTagBuf = privateusetag::PrivateUseTag<Vec<u8>>;
-
-pub type LanguageTag<'a> = RawLanguageTag<&'a [u8]>;
-pub type LanguageTagBuf = RawLanguageTag<Vec<u8>>;
+pub type LanguageTag<'a> = raw::LanguageTag<&'a [u8]>;
+pub type LanguageTagBuf = raw::LanguageTag<Vec<u8>>;
 
 #[inline]
 pub(crate) fn into_smallcase(c: u8) -> u8 {
@@ -177,22 +102,21 @@ pub(crate) fn case_insensitive_cmp(a: &[u8], b: &[u8]) -> Ordering {
 }
 
 macro_rules! component {
-	($parser:ident, $id:ident, $err:ident) => {
-		pub struct $err;
-
+	($parser:ident, $multi:expr, $doc:tt, $id:ident, $err:ident) => {
+		#[doc=$doc]
 		pub struct $id {
 			data: [u8]
 		}
 
 		impl $id {
 			#[inline]
-			pub fn new<B: AsRef<[u8]> + ?Sized>(bytes: &B) -> Result<&$id, $err> {
+			pub fn new<B: AsRef<[u8]> + ?Sized>(bytes: &B) -> Result<&$id, Error> {
 				let bytes = bytes.as_ref();
 				
-				if bytes.len() > 0 && crate::parse::$parser(bytes.as_ref(), 0) == bytes.len() {
+				if ($multi || bytes.len() > 0) && crate::parse::$parser(bytes.as_ref(), 0) == bytes.len() {
 					Ok(unsafe { Self::new_unchecked(bytes) })
 				} else {
-					Err($err)
+					Err(Error::$err)
 				}
 			}
 
@@ -213,19 +137,19 @@ macro_rules! component {
 		}
 
 		impl<'a> TryFrom<&'a str> for &'a $id {
-			type Error = $err;
+			type Error = Error;
 
 			#[inline]
-			fn try_from(b: &'a str) -> Result<&'a $id, $err> {
+			fn try_from(b: &'a str) -> Result<&'a $id, Error> {
 				$id::new(b)
 			}
 		}
 
 		impl<'a> TryFrom<&'a [u8]> for &'a $id {
-			type Error = $err;
+			type Error = Error;
 
 			#[inline]
-			fn try_from(b: &'a [u8]) -> Result<&'a $id, $err> {
+			fn try_from(b: &'a [u8]) -> Result<&'a $id, Error> {
 				$id::new(b)
 			}
 		}
@@ -311,13 +235,24 @@ macro_rules! component {
 	};
 }
 
-component!(language, Language, InvalidLangage);
-component!(primary_language, PrimaryLanguage, InvalidPrimaryLangage);
-component!(script, Script, InvalidScript);
-component!(region, Region, InvalidRegion);
-component!(variant, Variant, InvalidVariant);
-component!(extension, Extension, InvalidExtension);
-component!(privateuse, PrivateUse, InvalidPrivateUse);
+component! {
+	language, false,
+	"Primary and extended language subtags."
+	, Language, InvalidLangage
+}
+
+component!(primary_language, false, "Primary language subtag.", PrimaryLanguage, InvalidPrimaryLangage);
+component!(extlang, false, "Extended language subtags.", LanguageExtension, InvalidLangageExtension);
+component!(extlang_tag, false, "Single extended language subtag.", ExtendedLangTag, InvalidExtendedLangTag);
+component!(script, false, "Script subtag.", Script, InvalidScript);
+component!(region, false, "Region subtag.", Region, InvalidRegion);
+component!(variant, false, "Single variant subtag.", Variant, InvalidVariant);
+component!(variants, true, "Variant subtags.", Variants, InvalidVariants);
+component!(extension, false, "Single extension and its subtags.", Extension, InvalidExtension);
+component!(extension_subtag, false, "Single extension subtag.", ExtensionSubtag, InvalidExtensionSubtag);
+component!(extensions, true, "Extension subtags.", Extensions, InvalidExtensions);
+component!(privateuse, false, "Private use subtags.", PrivateUseSubtags, InvalidPrivateUseSubtags);
+component!(privateuse_subtag, false, "Single private use subtag.", PrivateUseSubtag, InvalidPrivateUseSubtag);
 
 impl Language {
 	fn primary_len(&self) -> usize {
@@ -335,9 +270,133 @@ impl Language {
 		i
 	}
 
+	/// Return the primary language subtag.
+	/// 
+	/// The primary language subtag is the first subtag in a language tag.
 	pub fn primary(&self) -> &PrimaryLanguage {
 		unsafe {
-			PrimaryLanguage::new_unchecked(&self.as_bytes()[0..self.primary_len()])
+			PrimaryLanguage::new_unchecked(&self.as_bytes()[..self.primary_len()])
+		}
+	}
+
+	/// Return the extended language subtags.
+	/// 
+	/// Extended language subtags are used to identify certain specially
+	/// selected languages that, for various historical and compatibility
+	/// reasons, are closely identified with or tagged using an existing
+	/// primary language subtag.
+	pub fn extension(&self) -> Option<&LanguageExtension> {
+		let bytes = self.as_bytes();
+		let i = self.primary_len()+1;
+		if i < bytes.len() {
+			unsafe {
+				Some(LanguageExtension::new_unchecked(&self.as_bytes()[i..]))
+			}
+		} else {
+			None
+		}
+	}
+
+	/// Return an iterator to the extended language subtags.
+	pub fn extension_subtags(&self) -> LanguageExtensionIter {
+		LanguageExtensionIter {
+			bytes: &self.as_bytes()[(self.primary_len()+1)..],
+			i: 0
+		}
+	}
+}
+
+macro_rules! iterator {
+	($collection:ident, $id:ident, $item:ident, $offset:literal) => {
+		pub struct $id<'a> {
+			bytes: &'a [u8],
+			i: usize
+		}
+		
+		impl<'a> Iterator for $id<'a> {
+			type Item = &'a $item;
+		
+			fn next(&mut self) -> Option<&'a $item> {
+				if self.i < self.bytes.len() {
+					if self.bytes[self.i] == b'-' {
+						self.i += 1;
+					}
+
+					let offset = self.i;
+		
+					while self.i < self.bytes.len() && self.bytes[self.i] != b'-' {
+						self.i += 1;
+					}
+					
+					unsafe {
+						Some($item::new_unchecked(&self.bytes[offset..self.i]))
+					}
+				} else {
+					None
+				}
+			}
+		}
+		
+		impl $collection {
+			pub fn iter(&self) -> $id {
+				$id {
+					bytes: self.as_bytes(),
+					i: $offset
+				}
+			}
+		}
+		
+		impl<'a> IntoIterator for &'a $collection {
+			type Item = &'a $item;
+			type IntoIter = $id<'a>;
+		
+			fn into_iter(self) -> $id<'a> {
+				$id {
+					bytes: self.as_bytes(),
+					i: $offset
+				}
+			}
+		}
+	};
+}
+
+iterator!(LanguageExtension, LanguageExtensionIter, ExtendedLangTag, 0);
+iterator!(Variants, VariantsIter, Variant, 0);
+iterator!(Extension, ExtensionIter, ExtensionSubtag, 2);
+iterator!(PrivateUseSubtags, PrivateUseSubtagsIter, PrivateUseSubtag, 2);
+
+pub struct ExtensionsIter<'a> {
+	bytes: &'a [u8],
+	i: usize,
+	current_id: u8
+}
+
+impl<'a> Iterator for ExtensionsIter<'a> {
+	type Item = (u8, &'a ExtensionSubtag);
+
+	fn next(&mut self) -> Option<Self::Item> {
+		if self.i < self.bytes.len() {
+			loop {
+				if self.bytes[self.i] == b'-' {
+					self.i += 1;
+				}
+
+				let offset = self.i;
+
+				while self.i < self.bytes.len() && self.bytes[self.i] != b'-' {
+					self.i += 1;
+				}
+
+				if self.i > offset+1 {
+					unsafe {
+						return Some((self.current_id, ExtensionSubtag::new_unchecked(&self.bytes[offset..self.i])))
+					}
+				} else {
+					self.current_id = self.bytes[offset];
+				}
+			}
+		} else {
+			None
 		}
 	}
 }

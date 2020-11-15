@@ -1,7 +1,8 @@
 use std::convert::TryFrom;
-use crate::Language;
-
-pub struct InvalidGrandfatheredTag;
+use crate::{
+	Error,
+	Language
+};
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum GrandfatheredTag {
@@ -70,7 +71,7 @@ impl GrandfatheredTag {
 	pub fn new<T: AsRef<[u8]>>(t: T) -> Result<GrandfatheredTag, T> {
 		match Self::try_from(t.as_ref()) {
 			Ok(tag) => Ok(tag),
-			Err(InvalidGrandfatheredTag) => Err(t)
+			Err(_) => Err(t)
 		}
 	}
 
@@ -132,15 +133,15 @@ impl GrandfatheredTag {
 }
 
 impl<'a> TryFrom<&'a [u8]> for GrandfatheredTag {
-	type Error = InvalidGrandfatheredTag;
+	type Error = Error;
 
-	fn try_from(bytes: &'a [u8]) -> Result<GrandfatheredTag, InvalidGrandfatheredTag> {
+	fn try_from(bytes: &'a [u8]) -> Result<GrandfatheredTag, Error> {
 		for tag in &GRANDFATHERED {
 			if crate::case_insensitive_eq(tag.as_bytes(), bytes) {
 				return Ok(*tag)
 			}
 		}
 
-		Err(InvalidGrandfatheredTag)
+		Err(Error::InvalidGrandfatheredTag)
 	}
 }

@@ -58,22 +58,18 @@ pub fn langtag(data: &[u8], i: usize) -> Result<ParsedLangTag, Error> {
 	}
 
 	let mut variant_end = region_end;
-	while separator(data, variant_end) {
-		let j = variant(data, variant_end+1);
+	if separator(data, variant_end) {
+		let j = variants(data, variant_end+1);
 		if j > variant_end+1 {
 			variant_end = j
-		} else {
-			break
 		}
 	}
 
 	let mut extension_end = variant_end;
-	while separator(data, extension_end) {
-		let j = extension(data, extension_end+1);
+	if separator(data, extension_end) {
+		let j = extensions(data, extension_end+1);
 		if j > extension_end+1 {
 			extension_end = j
-		} else {
-			break
 		}
 	}
 
@@ -96,41 +92,20 @@ pub fn langtag(data: &[u8], i: usize) -> Result<ParsedLangTag, Error> {
 }
 
 /// Parse a <language> production.
-pub fn language(data: &[u8], mut i: usize) -> usize {
-	let s = i;
+pub fn language(data: &[u8], i: usize) -> usize {
+	let primary_end = primary_language(data, i);
 
-	// shortest ISO 639 code
-	if alpha(data, i) && alpha(data, i+1) {
-		let mut j = i+2;
-
-		if alpha(data, j) {
-			j += 1
-		}
-
-		if wordsep(data, j) {
-			i = j
-		}
-
+	if primary_end < i+4 {
 		// sometimes followed by extended language subtags
-		if separator(data, i) {
-			let j = extlang(data, i+1);
-			if j > i+1 {
-				i = j
-			}
-		} else {
-			// or reserved for future use, or registered language subtag.
-			let mut j = i;
-			while j < s+8 && alpha(data, j) {
-				j += 1
-			}
-
-			if wordsep(data, j) {
-				i = j
+		if separator(data, primary_end) {
+			let j = extlang(data, primary_end+1);
+			if j > primary_end+1 {
+				return j
 			}
 		}
 	}
 
-	i
+	primary_end
 }
 
 pub fn primary_language(data: &[u8], mut i: usize) -> usize {
@@ -147,6 +122,7 @@ pub fn primary_language(data: &[u8], mut i: usize) -> usize {
 		if wordsep(data, j) {
 			i = j
 		} else {
+			// or reserved for future use, or registered language subtag.
 			while j < s+8 && alpha(data, j) {
 				j += 1
 			}
@@ -160,22 +136,33 @@ pub fn primary_language(data: &[u8], mut i: usize) -> usize {
 	i
 }
 
-fn extlang(data: &[u8], mut i: usize) -> usize {
+pub fn extlang(data: &[u8], mut i: usize) -> usize {
 	// selected ISO 639 codes
-	if alpha(data, i) && alpha(data, i+1) && alpha(data, i+2) && wordsep(data, i+3) {
-		i += 3;
+	let j = extlang_tag(data, i);
+	if j > i {
+		i = j;
 
-		// permanently reserved
 		if separator(data, i) {
-			if alpha(data, i+1) && alpha(data, i+2) && alpha(data, i+3) && wordsep(data, i+4) {
-				i += 4;
+			let j = extlang_tag(data, i+1);
+			if j > i+1 {
+				i = j;
+
 				if separator(data, i) {
-					if alpha(data, i+1) && alpha(data, i+2) && alpha(data, i+3) && wordsep(data, i+4) {
-						i += 4;
+					let j = extlang_tag(data, i+1);
+					if j > i+1 {
+						i = j;
 					}
 				}
 			}
 		}
+	}
+
+	i
+}
+
+pub fn extlang_tag(data: &[u8], mut i: usize) -> usize {
+	if alpha(data, i) && alpha(data, i+1) && alpha(data, i+2) && wordsep(data, i+3) {
+		i += 3;
 	}
 
 	i
@@ -223,36 +210,49 @@ pub fn variant(data: &[u8], mut i: usize) -> usize {
 	i
 }
 
-pub fn extension(data: &[u8], mut i: usize) -> usize {
-	if singleton(data, i) && separator(data, i+1) && alphanum(data, i+2) && alphanum(data, i+3) {
-		let mut j = i + 4;
+pub fn variants(data: &[u8], mut i: usize) -> usize {
+	let j = variant(data, i);
+	if j > i {
+		i = j;
+	}
 
-		if alphanum(data, j) {
-			j += 1;
-			if alphanum(data, j) {
-				j += 1;
-				if alphanum(data, j) {
-					j += 1;
-					if alphanum(data, j) {
-						j += 1;
-						if alphanum(data, j) {
-							j += 1;
-							if alphanum(data, j) {
-								j += 1;
-							}
-						}
-					}
+	while separator(data, i) {
+		let j = variant(data, i+1);
+		if j > i+1 {
+			i = j
+		} else {
+			break
+		}
+	}
+
+	i
+}
+
+pub fn extension(data: &[u8], mut i: usize) -> usize {
+	if singleton(data, i) && separator(data, i+1) {
+		let j = extension_subtag(data, i+2);
+
+		if j > i+2 {
+			i = j;
+
+			while separator(data, i) {
+				let j = extension_subtag(data, i+1);
+				if j > i+1 {
+					i = j
+				} else {
+					break
 				}
 			}
 		}
+	}
 
-		if wordsep(data, j) {
-			i = j
-		}
+	i
+}
 
-		while separator(data, i) && alphanum(data, i+1) && alphanum(data, i+2) {
-			let mut j = i+3;
-
+pub fn extension_subtag(data: &[u8], mut i: usize) -> usize {
+	if alphanum(data, i) {
+		if alphanum(data, i+1) {
+			let mut j = i+2;
 			if alphanum(data, j) {
 				j += 1;
 				if alphanum(data, j) {
@@ -273,7 +273,7 @@ pub fn extension(data: &[u8], mut i: usize) -> usize {
 			}
 
 			if wordsep(data, j) {
-				i = j
+				i = j;
 			}
 		}
 	}
@@ -281,24 +281,62 @@ pub fn extension(data: &[u8], mut i: usize) -> usize {
 	i
 }
 
-pub fn privateuse(data: &[u8], mut i: usize) -> usize {
-	if privateuse_singleton(data, i) && separator(data, i+1) && alphanum(data, i+2) {
-		i += 3;
+pub fn extensions(data: &[u8], mut i: usize) -> usize {
+	let j = extension(data, i);
+	if j > i {
+		i = j;
+	}
 
-		if alphanum(data, i) {
-			i += 1;
-			if alphanum(data, i) {
-				i += 1;
-				if alphanum(data, i) {
-					i += 1;
-					if alphanum(data, i) {
-						i += 1;
-						if alphanum(data, i) {
-							i += 1;
-							if alphanum(data, i) {
-								i += 1;
-								if alphanum(data, i) {
-									i += 1;
+	while separator(data, i) {
+		let j = extension(data, i+1);
+		if j > i+1 {
+			i = j
+		} else {
+			break
+		}
+	}
+
+	i
+}
+
+pub fn privateuse(data: &[u8], mut i: usize) -> usize {
+	if privateuse_singleton(data, i) && separator(data, i+1) {
+		let j = privateuse_subtag(data, i+2);
+
+		if j > i+2 {
+			i = j;
+
+			while separator(data, i) {
+				let j = privateuse_subtag(data, i+1);
+				if j > i+1 {
+					i = j
+				} else {
+					break
+				}
+			}
+		}
+	}
+
+	i
+}
+
+pub fn privateuse_subtag(data: &[u8], mut i: usize) -> usize {
+	if alphanum(data, i) {
+		let mut j = i+1;
+		if alphanum(data, j) {
+			j += 1;
+			if alphanum(data, j) {
+				j += 1;
+				if alphanum(data, j) {
+					j += 1;
+					if alphanum(data, j) {
+						j += 1;
+						if alphanum(data, j) {
+							j += 1;
+							if alphanum(data, j) {
+								j += 1;
+								if alphanum(data, j) {
+									j += 1;
 								}
 							}
 						}
@@ -307,30 +345,8 @@ pub fn privateuse(data: &[u8], mut i: usize) -> usize {
 			}
 		}
 
-		while separator(data, i) && alphanum(data, i+1) {
-			i += 2;
-
-			if alphanum(data, i) {
-				i += 1;
-				if alphanum(data, i) {
-					i += 1;
-					if alphanum(data, i) {
-						i += 1;
-						if alphanum(data, i) {
-							i += 1;
-							if alphanum(data, i) {
-								i += 1;
-								if alphanum(data, i) {
-									i += 1;
-									if alphanum(data, i) {
-										i += 1;
-									}
-								}
-							}
-						}
-					}
-				}
-			}
+		if wordsep(data, j) {
+			i = j;
 		}
 	}
 
