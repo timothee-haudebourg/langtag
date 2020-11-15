@@ -78,15 +78,15 @@ impl GrandfatheredTag {
 	pub fn language(&self) -> Option<&Language> {
 		unsafe {
 			match self {
-				ArtLojban => Some(Language::new_unchecked(b"art")),
-				CelGaulish => Some(Language::new_unchecked(b"cel")),
-				NoBok => Some(Language::new_unchecked(b"no")),
-				NoNyn => Some(Language::new_unchecked(b"no")),
-				ZhGuoyu => Some(Language::new_unchecked(b"zh")),
-				ZhHakka => Some(Language::new_unchecked(b"zh")),
-				ZhMin => Some(Language::new_unchecked(b"zh")),
-				ZhMinNan => Some(Language::new_unchecked(b"zh")),
-				ZhXiang => Some(Language::new_unchecked(b"zh")),
+				ArtLojban => Some(Language::parse_unchecked(b"art")),
+				CelGaulish => Some(Language::parse_unchecked(b"cel")),
+				NoBok => Some(Language::parse_unchecked(b"no")),
+				NoNyn => Some(Language::parse_unchecked(b"no")),
+				ZhGuoyu => Some(Language::parse_unchecked(b"zh")),
+				ZhHakka => Some(Language::parse_unchecked(b"zh")),
+				ZhMin => Some(Language::parse_unchecked(b"zh")),
+				ZhMinNan => Some(Language::parse_unchecked(b"zh")),
+				ZhXiang => Some(Language::parse_unchecked(b"zh")),
 				_ => None
 			}
 		}

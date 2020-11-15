@@ -1,21 +1,4 @@
-use std::fmt;
-
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum Error {
-	EmptyPrivateUse,
-	InvalidLanguage,
-	MalformedLangTag
-}
-
-impl fmt::Display for Error {
-	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-		match self {
-			Error::EmptyPrivateUse => write!(f, "empty private use tag"),
-			Error::InvalidLanguage => write!(f, "invalid primary language"),
-			Error::MalformedLangTag => write!(f, "malformed lang tag")
-		}
-	}
-}
+use crate::Error;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct ParsedLangTag {
@@ -38,7 +21,7 @@ pub fn langtag(data: &[u8], i: usize) -> Result<ParsedLangTag, Error> {
 	let language_end = language(data, i);
 
 	if language_end == i {
-		return Err(Error::InvalidLanguage)
+		return Err(Error::InvalidLangTag)
 	}
 
 	let mut script_end = language_end;

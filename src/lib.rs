@@ -10,41 +10,142 @@ use std::{
 		Ord,
 		Ordering
 	},
-	ops::Deref
+	ops::{
+		Range,
+		Deref
+	}
 };
 
 mod error;
 mod parse;
-pub mod raw;
+mod langtag;
+mod privateuse;
 mod grandfathered;
 
 pub use error::*;
+pub use self::langtag::*;
+pub use privateuse::*;
 pub use grandfathered::*;
+
+pub enum LanguageTag<'a, T: ?Sized = [u8]> {
+	Normal(LangTag<&'a T>),
+	PrivateUse(&'a PrivateUseTag<T>),
+	Grandfathered(GrandfatheredTag)
+}
+
+pub enum LanguageTagBuf<T = Vec<u8>> {
+	Normal(LangTag<T>),
+	PrivateUse(PrivateUseTag<T>),
+	Grandfathered(GrandfatheredTag)
+}
+
+impl<T: AsRef<[u8]>> LanguageTagBuf<T> {
+	#[inline]
+	pub fn new(t: T) -> Result<LanguageTagBuf<T>, Error> {
+		match GrandfatheredTag::new(t) {
+			Ok(tag) => Ok(LanguageTagBuf::Grandfathered(tag)),
+			Err(t) => match PrivateUseTag::new(t) {
+				Ok(tag) => Ok(LanguageTagBuf::PrivateUse(tag)),
+				Err(t) => {
+					Ok(LanguageTagBuf::Normal(LangTag::new(t)?))
+				}
+			}
+		}
+	}
+}
 
 impl LanguageTagBuf {
 	#[inline]
-	pub fn parse<T: AsRef<[u8]> + ?Sized>(t: &T) -> Result<LanguageTagBuf, parse::Error> {
+	pub fn parse_copy<T: AsRef<[u8]> + ?Sized>(t: &T) -> Result<LanguageTagBuf, Error> {
 		let mut buffer = Vec::new();
 		buffer.copy_from_slice(t.as_ref());
 		Self::new(buffer)
 	}
 }
 
-impl<'a> LanguageTag<'a> {
+impl<'a, T: AsRef<[u8]> + ?Sized> LanguageTag<'a, T> {
 	#[inline]
-	pub fn parse<T: AsRef<[u8]> + ?Sized>(t: &'a T) -> Result<LanguageTag<'a>, parse::Error> {
-		Self::new(t.as_ref())
+	pub fn as_bytes(&self) -> &[u8] {
+		match self {
+			LanguageTag::Normal(tag) => tag.as_bytes(),
+			LanguageTag::PrivateUse(tag) => tag.as_bytes(),
+			LanguageTag::Grandfathered(tag) => tag.as_bytes()
+		}
+	}
+
+	#[inline]
+	pub fn as_str(&self) -> &str {
+		match self {
+			LanguageTag::Normal(tag) => tag.as_str(),
+			LanguageTag::PrivateUse(tag) => tag.as_str(),
+			LanguageTag::Grandfathered(tag) => tag.as_str()
+		}
+	}
+
+	#[inline]
+	pub fn language(&self) -> Option<&Language> {
+		match self {
+			LanguageTag::Normal(tag) => Some(tag.language()),
+			LanguageTag::PrivateUse(_) => None,
+			LanguageTag::Grandfathered(tag) => tag.language()
+		}
 	}
 }
 
-pub type LangTag<'a> = raw::LangTag<&'a [u8]>;
-pub type LangTagBuf = raw::LangTag<Vec<u8>>;
+impl<'a> LanguageTag<'a> {
+	#[inline]
+	pub fn parse<T: AsRef<[u8]> + ?Sized>(t: &'a T) -> Result<LanguageTag<'a>, Error> {
+		match GrandfatheredTag::new(t) {
+			Ok(tag) => Ok(LanguageTag::Grandfathered(tag)),
+			Err(_) => match PrivateUseTag::parse(t) {
+				Ok(tag) => Ok(LanguageTag::PrivateUse(tag)),
+				Err(_) => {
+					Ok(LanguageTag::Normal(LangTag::parse(t)?))
+				}
+			}
+		}
+	}
+}
 
-pub type PrivateUseTag<'a> = raw::PrivateUseTag<&'a [u8]>;
-pub type PrivateUseTagBuf = raw::PrivateUseTag<Vec<u8>>;
+impl<'a, T: AsRef<[u8]> + ?Sized> AsRef<[u8]> for LanguageTag<'a, T> {
+	#[inline]
+	fn as_ref(&self) -> &[u8] {
+		self.as_bytes()
+	}
+}
 
-pub type LanguageTag<'a> = raw::LanguageTag<&'a [u8]>;
-pub type LanguageTagBuf = raw::LanguageTag<Vec<u8>>;
+impl<'a, T: AsRef<[u8]> + ?Sized> AsRef<str> for LanguageTag<'a, T> {
+	#[inline]
+	fn as_ref(&self) -> &str {
+		self.as_str()
+	}
+}
+
+impl<'a, T: AsRef<[u8]> + ?Sized, U: AsRef<[u8]> + ?Sized> PartialEq<U> for LanguageTag<'a, T> {
+	#[inline]
+	fn eq(&self, other: &U) -> bool {
+		case_insensitive_eq(self.as_bytes(), other.as_ref())
+	}
+}
+
+impl<'a, T: AsRef<[u8]> + ?Sized> Eq for LanguageTag<'a, T> { }
+
+impl<'a, T: AsRef<[u8]> + ?Sized> fmt::Display for LanguageTag<'a, T> {
+	#[inline]
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		fmt::Display::fmt(self.as_str(), f)
+	}
+}
+
+impl<'a, T: AsRef<[u8]> + ?Sized> fmt::Debug for LanguageTag<'a, T> {
+	#[inline]
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		fmt::Debug::fmt(self.as_str(), f)
+	}
+}
+
+pub type LangTagBuf = LangTag<Vec<u8>>;
+pub type PrivateUseTagBuf = PrivateUseTag<Vec<u8>>;
 
 #[inline]
 pub(crate) fn into_smallcase(c: u8) -> u8 {
@@ -104,30 +205,73 @@ pub(crate) fn case_insensitive_cmp(a: &[u8], b: &[u8]) -> Ordering {
 macro_rules! component {
 	($parser:ident, $multi:expr, $doc:tt, $id:ident, $err:ident) => {
 		#[doc=$doc]
-		pub struct $id {
-			data: [u8]
+		pub struct $id<T: ?Sized = [u8]> {
+			data: T
 		}
 
-		impl $id {
+		impl<T: AsRef<[u8]>> $id<T> {
 			#[inline]
-			pub fn new<B: AsRef<[u8]> + ?Sized>(bytes: &B) -> Result<&$id, Error> {
-				let bytes = bytes.as_ref();
+			pub fn new(t: T) -> Result<$id<T>, Error> {
+				let bytes = t.as_ref();
 				
-				if ($multi || bytes.len() > 0) && crate::parse::$parser(bytes.as_ref(), 0) == bytes.len() {
-					Ok(unsafe { Self::new_unchecked(bytes) })
+				if ($multi || bytes.len() > 0) && crate::parse::$parser(bytes, 0) == bytes.len() {
+					Ok($id {
+						data: t
+					})
 				} else {
 					Err(Error::$err)
 				}
 			}
 
 			#[inline]
-			pub unsafe fn new_unchecked<B: AsRef<[u8]> + ?Sized>(bytes: &B) -> &$id {
-				&*(bytes.as_ref() as *const [u8] as *const $id)
+			pub unsafe fn new_unchecked(t: T) -> $id<T> {
+				$id {
+					data: t
+				}
+			}
+		}
+
+		impl $id<[u8]> {
+			pub fn parse<'a, T: AsRef<[u8]> + ?Sized>(bytes: &'a T) -> Result<&'a $id<[u8]>, Error> {
+				let bytes = bytes.as_ref();
+
+				if ($multi || bytes.len() > 0) && crate::parse::$parser(bytes, 0) == bytes.len() {
+					Ok(unsafe {
+						&*(bytes as *const [u8] as *const $id<[u8]>)
+					})
+				} else {
+					Err(Error::$err)
+				}
+			}
+
+			pub unsafe fn parse_unchecked<'a, T: AsRef<[u8]> + ?Sized>(bytes: &'a T) -> &'a $id<[u8]> {
+				&*(bytes.as_ref() as *const [u8] as *const $id<[u8]>)
+			}
+		}
+
+		impl $id<Vec<u8>> {
+			pub fn parse_copy<'a, T: AsRef<[u8]> + ?Sized>(bytes: &'a T) -> Result<$id<Vec<u8>>, Error> {
+				let mut buffer = Vec::new();
+				buffer.copy_from_slice(bytes.as_ref());
+				$id::new(buffer)
+			}
+
+			pub unsafe fn parse_copy_unchecked<'a, T: AsRef<[u8]> + ?Sized>(bytes: &'a T) -> $id<Vec<u8>> {
+				let mut buffer = Vec::new();
+				buffer.copy_from_slice(bytes.as_ref());
+				$id::new_unchecked(buffer)
+			}
+		}
+
+		impl<T: AsRef<[u8]> + ?Sized> $id<T> {
+			#[inline]
+			pub fn len(&self) -> usize {
+				self.as_bytes().len()
 			}
 
 			#[inline]
 			pub fn as_bytes(&self) -> &[u8] {
-				&self.data
+				self.data.as_ref()
 			}
 
 			#[inline]
@@ -136,98 +280,112 @@ macro_rules! component {
 			}
 		}
 
-		impl<'a> TryFrom<&'a str> for &'a $id {
+		impl<'a> TryFrom<&'a str> for &'a $id<[u8]> {
 			type Error = Error;
 
 			#[inline]
-			fn try_from(b: &'a str) -> Result<&'a $id, Error> {
-				$id::new(b)
+			fn try_from(b: &'a str) -> Result<&'a $id<[u8]>, Error> {
+				$id::parse(b.as_bytes())
 			}
 		}
 
-		impl<'a> TryFrom<&'a [u8]> for &'a $id {
+		impl<'a> TryFrom<&'a [u8]> for &'a $id<[u8]> {
 			type Error = Error;
 
 			#[inline]
-			fn try_from(b: &'a [u8]) -> Result<&'a $id, Error> {
-				$id::new(b)
+			fn try_from(b: &'a [u8]) -> Result<&'a $id<[u8]>, Error> {
+				$id::parse(b)
 			}
 		}
 
-		impl AsRef<[u8]> for $id {
+		impl<T: AsRef<[u8]> + ?Sized> AsRef<[u8]> for $id<T> {
 			#[inline]
 			fn as_ref(&self) -> &[u8] {
 				self.as_bytes()
 			}
 		}
 
-		impl AsRef<str> for $id {
+		impl<T: AsRef<[u8]> + ?Sized> AsRef<str> for $id<T> {
 			#[inline]
 			fn as_ref(&self) -> &str {
 				self.as_str()
 			}
 		}
 
-		impl Deref for $id {
-			type Target = [u8];
+		impl<T: ?Sized> Deref for $id<T> {
+			type Target = T;
 
 			#[inline]
-			fn deref(&self) -> &[u8] {
-				self.as_bytes()
+			fn deref(&self) -> &T {
+				&self.data
 			}
 		}
 
-		impl<T: AsRef<[u8]> + ?Sized> PartialOrd<T> for $id {
+		impl<T: AsRef<[u8]> + ?Sized, U: AsRef<[u8]> + ?Sized> PartialOrd<$id<U>> for $id<T> {
 			#[inline]
-			fn partial_cmp(&self, other: &T) -> Option<Ordering> {
-				Some(crate::case_insensitive_cmp(self.as_bytes(), other.as_ref()))
+			fn partial_cmp(&self, other: &$id<U>) -> Option<Ordering> {
+				Some(crate::case_insensitive_cmp(self.as_bytes(), other.as_bytes()))
 			}
 		}
 
-		impl Ord for $id {
+		impl<T: AsRef<[u8]> + ?Sized> Ord for $id<T> {
 			#[inline]
-			fn cmp(&self, other: &$id) -> Ordering {
+			fn cmp(&self, other: &$id<T>) -> Ordering {
 				crate::case_insensitive_cmp(self.as_bytes(), other.as_bytes())
 			}
 		}
 
-		impl<T: AsRef<[u8]> + ?Sized> PartialEq<T> for $id {
+		impl<T: AsRef<[u8]> + ?Sized, U: AsRef<[u8]> + ?Sized> PartialEq<$id<U>> for $id<T> {
 			#[inline]
-			fn eq(&self, other: &T) -> bool {
-				crate::case_insensitive_eq(self.as_bytes(), other.as_ref())
-			}
-		}
-
-		impl PartialEq<$id> for [u8] {
-			#[inline]
-			fn eq(&self, other: &$id) -> bool {
-				crate::case_insensitive_eq(self, other.as_bytes())
-			}
-		}
-
-		impl PartialEq<$id> for str {
-			#[inline]
-			fn eq(&self, other: &$id) -> bool {
+			fn eq(&self, other: &$id<U>) -> bool {
 				crate::case_insensitive_eq(self.as_bytes(), other.as_bytes())
 			}
 		}
 
-		impl Eq for $id {}
-
-		impl Hash for $id {
+		impl<T: AsRef<[u8]> + ?Sized> PartialEq<[u8]> for $id<T> {
 			#[inline]
-			fn hash<H: Hasher>(&self, h: &mut H) {
-				crate::case_insensitive_hash(&self.data, h)
+			fn eq(&self, other: &[u8]) -> bool {
+				crate::case_insensitive_eq(self.as_bytes(), other)
 			}
 		}
 
-		impl fmt::Display for $id {
+		impl<T: AsRef<[u8]> + ?Sized> PartialEq<str> for $id<T> {
+			#[inline]
+			fn eq(&self, other: &str) -> bool {
+				crate::case_insensitive_eq(self.as_bytes(), other.as_bytes())
+			}
+		}
+
+		impl<T: AsRef<[u8]> + ?Sized> PartialEq<$id<T>> for [u8] {
+			#[inline]
+			fn eq(&self, other: &$id<T>) -> bool {
+				crate::case_insensitive_eq(self, other.as_bytes())
+			}
+		}
+
+		impl<T: AsRef<[u8]> + ?Sized> PartialEq<$id<T>> for str {
+			#[inline]
+			fn eq(&self, other: &$id<T>) -> bool {
+				crate::case_insensitive_eq(self.as_bytes(), other.as_bytes())
+			}
+		}
+
+		impl<T: AsRef<[u8]> + ?Sized> Eq for $id<T> {}
+
+		impl<T: AsRef<[u8]> + ?Sized> Hash for $id<T> {
+			#[inline]
+			fn hash<H: Hasher>(&self, h: &mut H) {
+				crate::case_insensitive_hash(self.as_bytes(), h)
+			}
+		}
+
+		impl<T: AsRef<[u8]> + ?Sized> fmt::Display for $id<T> {
 			fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 				fmt::Display::fmt(self.as_str(), f)
 			}
 		}
 
-		impl fmt::Debug for $id {
+		impl<T: AsRef<[u8]> + ?Sized> fmt::Debug for $id<T> {
 			fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 				fmt::Debug::fmt(self.as_str(), f)
 			}
@@ -275,7 +433,7 @@ impl Language {
 	/// The primary language subtag is the first subtag in a language tag.
 	pub fn primary(&self) -> &PrimaryLanguage {
 		unsafe {
-			PrimaryLanguage::new_unchecked(&self.as_bytes()[..self.primary_len()])
+			PrimaryLanguage::parse_unchecked(&self.as_bytes()[..self.primary_len()])
 		}
 	}
 
@@ -290,7 +448,7 @@ impl Language {
 		let i = self.primary_len()+1;
 		if i < bytes.len() {
 			unsafe {
-				Some(LanguageExtension::new_unchecked(&self.as_bytes()[i..]))
+				Some(LanguageExtension::parse_unchecked(&self.as_bytes()[i..]))
 			}
 		} else {
 			None
@@ -329,7 +487,7 @@ macro_rules! iterator {
 					}
 					
 					unsafe {
-						Some($item::new_unchecked(&self.bytes[offset..self.i]))
+						Some($item::parse_unchecked(&self.bytes[offset..self.i]))
 					}
 				} else {
 					None
@@ -361,8 +519,94 @@ macro_rules! iterator {
 }
 
 iterator!(LanguageExtension, LanguageExtensionIter, ExtendedLangTag, 0);
+
 iterator!(Variants, VariantsIter, Variant, 0);
+
+pub struct VariantsMut<'a> {
+	buffer: &'a mut Vec<u8>,
+	p: &'a mut parse::ParsedLangTag
+}
+
+impl<'a> VariantsMut<'a> {
+	pub fn is_empty(&self) -> bool {
+		self.p.variant_end > self.p.region_end
+	}
+
+	pub fn first(&self) -> Option<&Variant> {
+		if self.is_empty() {
+			None
+		} else {
+			let mut i = self.p.region_end;
+
+			while i < self.buffer.len() && self.buffer[i] != b'-' {
+				i += 1
+			}
+
+			unsafe {
+				Some(Variant::parse_unchecked(&self.buffer[i..self.p.variant_end]))
+			}
+		}
+	}
+
+	pub fn last(&self) -> Option<&Variant> {
+		if self.is_empty() {
+			None
+		} else {
+			let mut i = self.p.variant_end-1;
+
+			while i > 1 && self.buffer[i-1] != b'-' {
+				i -= 1
+			}
+
+			unsafe {
+				Some(Variant::parse_unchecked(&self.buffer[i..self.p.variant_end]))
+			}
+		}
+	}
+
+	pub fn push(&mut self, variant: &Variant) {
+		let bytes = variant.as_bytes();
+
+		let mut i = self.p.variant_end;
+		replace(self.buffer, i..i, b"-");
+		i += 1;
+		replace(self.buffer, i..i, bytes);
+
+		let len = bytes.len() + 1;
+		self.p.variant_end += len;
+		self.p.extension_end += len;
+		self.p.privateuse_end += len;
+	}
+
+	pub fn pop(&mut self) -> Option<Variant<Vec<u8>>> {
+		match self.last() {
+			Some(last) => {
+				let mut new_end = self.p.variant_end - last.len();
+
+				let copy = unsafe {
+					Variant::parse_copy_unchecked(&self.buffer[new_end..self.p.variant_end])
+				};
+
+				if new_end > self.p.region_end {
+					new_end -= 1
+				}
+
+				replace(self.buffer, new_end..self.p.variant_end, b"");
+
+				let len = self.p.variant_end - new_end;
+				self.p.variant_end -= len;
+				self.p.extension_end -= len;
+				self.p.privateuse_end -= len;
+
+				Some(copy)
+			},
+			None => None
+		}
+	}
+}
+
 iterator!(Extension, ExtensionIter, ExtensionSubtag, 2);
+
 iterator!(PrivateUseSubtags, PrivateUseSubtagsIter, PrivateUseSubtag, 2);
 
 pub struct ExtensionsIter<'a> {
@@ -389,7 +633,7 @@ impl<'a> Iterator for ExtensionsIter<'a> {
 
 				if self.i > offset+1 {
 					unsafe {
-						return Some((self.current_id, ExtensionSubtag::new_unchecked(&self.bytes[offset..self.i])))
+						return Some((self.current_id, ExtensionSubtag::parse_unchecked(&self.bytes[offset..self.i])))
 					}
 				} else {
 					self.current_id = self.bytes[offset];
@@ -398,5 +642,40 @@ impl<'a> Iterator for ExtensionsIter<'a> {
 		} else {
 			None
 		}
+	}
+}
+
+/// Replacement function.
+///
+/// Replace the given `range` of the input `buffer` with the given `content`.
+/// This function is used in many places to replace parts of langtag buffer data.
+pub(crate) fn replace(buffer: &mut Vec<u8>, range: Range<usize>, content: &[u8]) {
+	let range_len = range.end - range.start;
+
+	// move the content around.
+	if range_len != content.len() {
+		let tail_len = buffer.len() - range.end; // the length of the content in the buffer after [range].
+		let new_end = range.start + content.len();
+
+		if range_len > content.len() { // shrink
+			for i in 0..tail_len {
+				buffer[new_end + i] = buffer[range.end + i];
+			}
+
+			buffer.resize(new_end + tail_len, 0);
+		} else { // grow
+			let tail_len = buffer.len() - range.end;
+
+			buffer.resize(new_end + tail_len, 0);
+
+			for i in 0..tail_len {
+				buffer[new_end + tail_len - i - 1] = buffer[range.end + tail_len - i - 1];
+			}
+		}
+	}
+
+	// actually replace the content.
+	for i in 0..content.len() {
+		buffer[range.start + i] = content[i]
 	}
 }
