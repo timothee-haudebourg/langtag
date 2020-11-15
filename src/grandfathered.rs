@@ -5,7 +5,7 @@ pub struct InvalidGrandfatheredTag;
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum GrandfatheredTag {
-	// regular
+	// irregular
 	EnGbOed,
 	IAmi,
 	IBnn,
@@ -23,7 +23,7 @@ pub enum GrandfatheredTag {
 	SgnBeFr,
 	SgnBeNl,
 	SgnChDe,
-	// irregular
+	// regular
 	ArtLojban,
 	CelGaulish,
 	NoBok,
