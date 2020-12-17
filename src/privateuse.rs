@@ -3,12 +3,54 @@ use std::{
 	hash::{
 		Hash,
 		Hasher
-	}
+	},
+	convert::TryFrom,
+	ops::Deref,
+	cmp::Ordering
 };
 use crate::{
 	Error,
-	PrivateUseSubtags
+	component,
+	iterator,
+	parse
 };
+
+component! {
+	/// List of private use subtags.
+	/// 
+	/// Private use subtags component of a language tag.
+	/// If not empty, it is composed of the prefix `x-` followed
+	/// by a list of [`PrivateUseSubtag`] separated by the `-` character.
+	privateuse, false, PrivateUseSubtags, InvalidPrivateUseSubtags
+}
+
+component! {
+	/// Single private use subtag.
+	/// 
+	/// Private use subtags are used to indicate distinctions in language
+	/// that are important in a given context by private agreement.
+	privateuse_subtag, false, PrivateUseSubtag, InvalidPrivateUseSubtag
+}
+
+iterator!(PrivateUseSubtags, PrivateUseSubtagsIter, PrivateUseSubtag, 2);
+
+pub struct PrivateUseSubtagsMut<'a> {
+	/// Language tag buffer.
+	pub(crate) buffer: &'a mut Vec<u8>,
+
+	/// Language tag parsing data.
+	pub(crate) p: &'a mut parse::ParsedLangTag
+}
+
+impl<'a> PrivateUseSubtagsMut<'a> {
+	pub fn insert(&mut self, subtag: &PrivateUseSubtag) {
+		unimplemented!() // TODO
+	}
+
+	pub fn remove<T: AsRef<[u8]>>(&mut self, subtag: &T) {
+		unimplemented!() // TODO
+	}
+}
 
 pub struct PrivateUseTag<T: ?Sized = [u8]> {
 	data: T

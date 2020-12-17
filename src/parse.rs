@@ -379,7 +379,7 @@ fn alphanum(data: &[u8], i: usize) -> bool {
 	}
 }
 
-fn is_singleton(c: u8) -> bool {
+pub fn is_singleton(c: u8) -> bool {
 	is_digit(c) || (c != b'x' && c != b'X' && is_alpha(c))
 }
 
