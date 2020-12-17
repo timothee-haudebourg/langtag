@@ -55,7 +55,7 @@ impl<T: AsRef<[u8]> + ?Sized> PrivateUseTag<T> {
 	}
 
 	#[inline]
-	pub fn as_ref(&self) -> &PrivateUseSubtags {
+	pub fn subtags(&self) -> &PrivateUseSubtags {
 		unsafe {
 			PrivateUseSubtags::parse_unchecked(self.as_bytes())
 		}

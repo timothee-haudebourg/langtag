@@ -63,33 +63,112 @@ impl LanguageTagBuf {
 	}
 }
 
-impl<'a, T: AsRef<[u8]> + ?Sized> LanguageTag<'a, T> {
-	#[inline]
-	pub fn as_bytes(&self) -> &[u8] {
-		match self {
-			LanguageTag::Normal(tag) => tag.as_bytes(),
-			LanguageTag::PrivateUse(tag) => tag.as_bytes(),
-			LanguageTag::Grandfathered(tag) => tag.as_bytes()
+macro_rules! language_tag_impl {
+	() => {
+		#[inline]
+		pub fn as_bytes(&self) -> &[u8] {
+			match self {
+				Self::Normal(tag) => tag.as_bytes(),
+				Self::PrivateUse(tag) => tag.as_bytes(),
+				Self::Grandfathered(tag) => tag.as_bytes()
+			}
+		}
+	
+		#[inline]
+		pub fn as_str(&self) -> &str {
+			match self {
+				Self::Normal(tag) => tag.as_str(),
+				Self::PrivateUse(tag) => tag.as_str(),
+				Self::Grandfathered(tag) => tag.as_str()
+			}
+		}
+	
+		#[inline]
+		pub fn is_normal(&self) -> bool {
+			match self {
+				Self::Normal(_) => true,
+				_ => false
+			}
+		}
+	
+		#[inline]
+		pub fn is_private_use(&self) -> bool {
+			match self {
+				Self::PrivateUse(_) => true,
+				_ => false
+			}
+		}
+	
+		#[inline]
+		pub fn is_grandfathered(&self) -> bool {
+			match self {
+				Self::Grandfathered(_) => true,
+				_ => false
+			}
+		}
+	
+		#[inline]
+		pub fn language(&self) -> Option<&Language> {
+			match self {
+				Self::Normal(tag) => Some(tag.language()),
+				Self::PrivateUse(_) => None,
+				Self::Grandfathered(tag) => tag.language()
+			}
+		}
+	
+		#[inline]
+		pub fn script(&self) -> Option<&Script> {
+			match self {
+				Self::Normal(tag) => tag.script(),
+				Self::PrivateUse(_) => None,
+				Self::Grandfathered(_) => None
+			}
+		}
+	
+		#[inline]
+		pub fn region(&self) -> Option<&Region> {
+			match self {
+				Self::Normal(tag) => tag.region(),
+				Self::PrivateUse(_) => None,
+				Self::Grandfathered(_) => None
+			}
+		}
+	
+		#[inline]
+		pub fn variants(&self) -> &Variants {
+			match self {
+				Self::Normal(tag) => tag.variants(),
+				Self::PrivateUse(_) => Variants::empty(),
+				Self::Grandfathered(_) => Variants::empty()
+			}
+		}
+	
+		#[inline]
+		pub fn extensions(&self) -> &Extensions {
+			match self {
+				Self::Normal(tag) => tag.extensions(),
+				Self::PrivateUse(_) => Extensions::empty(),
+				Self::Grandfathered(_) => Extensions::empty()
+			}
+		}
+	
+		#[inline]
+		pub fn private_use_subtags(&self) -> &PrivateUseSubtags {
+			match self {
+				Self::Normal(tag) => tag.private_use_subtags(),
+				Self::PrivateUse(tag) => tag.subtags(),
+				Self::Grandfathered(_) => PrivateUseSubtags::empty()
+			}
 		}
 	}
+}
 
-	#[inline]
-	pub fn as_str(&self) -> &str {
-		match self {
-			LanguageTag::Normal(tag) => tag.as_str(),
-			LanguageTag::PrivateUse(tag) => tag.as_str(),
-			LanguageTag::Grandfathered(tag) => tag.as_str()
-		}
-	}
+impl <'a, T: AsRef<[u8]> + ?Sized> LanguageTag<'a, T> {
+	language_tag_impl!();
+}
 
-	#[inline]
-	pub fn language(&self) -> Option<&Language> {
-		match self {
-			LanguageTag::Normal(tag) => Some(tag.language()),
-			LanguageTag::PrivateUse(_) => None,
-			LanguageTag::Grandfathered(tag) => tag.language()
-		}
-	}
+impl <T: AsRef<[u8]>> LanguageTagBuf<T> {
+	language_tag_impl!();
 }
 
 impl<'a> LanguageTag<'a> {
@@ -203,8 +282,8 @@ pub(crate) fn case_insensitive_cmp(a: &[u8], b: &[u8]) -> Ordering {
 }
 
 macro_rules! component {
-	($parser:ident, $multi:expr, $doc:tt, $id:ident, $err:ident) => {
-		#[doc=$doc]
+	($(#[ doc = $doc:tt ])* $parser:ident, $multi:expr, $id:ident, $err:ident) => {
+		$(#[doc=$doc])*
 		pub struct $id<T: ?Sized = [u8]> {
 			data: T
 		}
@@ -394,25 +473,138 @@ macro_rules! component {
 }
 
 component! {
-	language, false,
-	"Primary and extended language subtags."
-	, Language, InvalidLangage
+	/// Primary and extended language subtags.
+	/// 
+	/// This type represents the primary language subtag (first subtag in a
+	/// language tag) and the extended language subtags associated with it.
+	language, false, Language, InvalidLangage
 }
 
-component!(primary_language, false, "Primary language subtag.", PrimaryLanguage, InvalidPrimaryLangage);
-component!(extlang, false, "Extended language subtags.", LanguageExtension, InvalidLangageExtension);
-component!(extlang_tag, false, "Single extended language subtag.", ExtendedLangTag, InvalidExtendedLangTag);
-component!(script, false, "Script subtag.", Script, InvalidScript);
-component!(region, false, "Region subtag.", Region, InvalidRegion);
-component!(variant, false, "Single variant subtag.", Variant, InvalidVariant);
-component!(variants, true, "Variant subtags.", Variants, InvalidVariants);
-component!(extension, false, "Single extension and its subtags.", Extension, InvalidExtension);
-component!(extension_subtag, false, "Single extension subtag.", ExtensionSubtag, InvalidExtensionSubtag);
-component!(extensions, true, "Extension subtags.", Extensions, InvalidExtensions);
-component!(privateuse, false, "Private use subtags.", PrivateUseSubtags, InvalidPrivateUseSubtags);
-component!(privateuse_subtag, false, "Single private use subtag.", PrivateUseSubtag, InvalidPrivateUseSubtag);
+component! {
+	/// Primary language subtag.
+	/// 
+	/// The primary language subtag is the first subtag in a language tag.
+	primary_language, false, PrimaryLanguage, InvalidPrimaryLangage
+}
+
+component! {
+	/// List of extended language subtags.
+	/// 
+	/// This type represents a list of extended language subtags,
+	/// separated by a `-` character.
+	/// 
+	/// Extended language subtags are used to identify certain specially
+	/// selected languages that, for various historical and compatibility
+	/// reasons, are closely identified with or tagged using an existing
+	/// primary language subtag.
+	/// The type [`ExtendedLangTag`] represents a single extended
+	/// language subtag.
+	extlang, false, LanguageExtension, InvalidLangageExtension
+}
+
+component! {
+	/// Single extended language subtag.
+	/// 
+	/// Extended language subtags are used to identify certain specially
+	/// selected languages that, for various historical and compatibility
+	/// reasons, are closely identified with or tagged using an existing
+	/// primary language subtag.
+	/// 
+	/// The type [`LanguageExtension`] represents a list of
+	/// extended language.
+	extlang_tag, false, ExtendedLangTag, InvalidExtendedLangTag
+}
+
+component! {
+	/// Script subtag.
+	/// 
+	/// Script subtags are used to indicate the script or writing system
+	/// variations that distinguish the written forms of a language or its
+	/// dialects.
+	script, false, Script, InvalidScript
+}
+
+component! {
+	/// Region subtag.
+	/// 
+	/// Region subtags are used to indicate linguistic variations associated
+	/// with or appropriate to a specific country, territory, or region.
+	/// Typically, a region subtag is used to indicate variations such as
+	/// regional dialects or usage, or region-specific spelling conventions.
+	/// It can also be used to indicate that content is expressed in a way
+	/// that is appropriate for use throughout a region, for instance,
+	/// Spanish content tailored to be useful throughout Latin America.
+	region, false, Region, InvalidRegion
+}
+
+component! {
+	/// Single variant subtag.
+	/// 
+	/// Variant subtags are used to indicate additional, well-recognized
+	/// variations that define a language or its dialects that are not
+	/// covered by other available subtags.
+	variant, false, Variant, InvalidVariant
+}
+
+component! {
+	/// List of variant subtags.
+	/// 
+	/// Represents a list of variant subtags separated by a `-` character
+	/// as found in a language tag.
+	variants, true, Variants, InvalidVariants
+}
+
+component! {
+	/// Single extension and its subtags.
+	/// 
+	/// Extensions provide a mechanism for extending language tags for use in
+	/// various applications. They are intended to identify information that
+	/// is commonly used in association with languages or language tags but
+	/// that is not part of language identification.
+	/// 
+	/// An extension is composed of a singleton (a single character)
+	/// followed by associated subtags.
+	/// For instance `a-subtag1-subtag2`.
+	/// Each subtag of the extension is represented by the [`ExtensionSubtag`] type.
+	extension, false, Extension, InvalidExtension
+}
+
+component! {
+	/// Single extension subtag.
+	/// 
+	/// Extension subtag found in a language tag extension.
+	extension_subtag, false, ExtensionSubtag, InvalidExtensionSubtag
+}
+
+component! {
+	/// List of extension subtags.
+	/// 
+	/// A list of language tag extension, separated by a `-` character.
+	/// Individual extensions are represented by the [`Extension`] type,
+	/// while extension subtags are represented by the [`ExtensionSubtag`]
+	/// type.
+	extensions, true, Extensions, InvalidExtensions
+}
+
+component! {
+	/// List of private use subtags.
+	/// 
+	/// Private use subtags component of a language tag.
+	/// If not empty, it is composed of the prefix `x-` followed
+	/// by a list of [`PrivateUseSubtag`] separated by the `-` character.
+	privateuse, false, PrivateUseSubtags, InvalidPrivateUseSubtags
+}
+
+component! {
+	/// Single private use subtag.
+	/// 
+	/// Private use subtags are used to indicate distinctions in language
+	/// that are important in a given context by private agreement.
+	privateuse_subtag, false, PrivateUseSubtag, InvalidPrivateUseSubtag
+}
 
 impl Language {
+	/// Return the length (in bytes) of the primary subtag.
 	fn primary_len(&self) -> usize {
 		let bytes = self.as_bytes();
 		let mut i = 0;
@@ -464,6 +656,15 @@ impl Language {
 	}
 }
 
+impl Extensions {
+	/// The empty list of extension (an empty string).
+	pub fn empty() -> &'static Extensions {
+		unsafe {
+			Extensions::parse_unchecked(b"")
+		}
+	}
+}
+
 macro_rules! iterator {
 	($collection:ident, $id:ident, $item:ident, $offset:literal) => {
 		pub struct $id<'a> {
@@ -496,6 +697,55 @@ macro_rules! iterator {
 		}
 		
 		impl $collection {
+			/// Empty list (the empty string).
+			pub fn empty() -> &'static $collection {
+				unsafe {
+					$collection::parse_unchecked(b"")
+				}
+			}
+
+			/// Checks if the list is empty.
+			pub fn is_empty(&self) -> bool {
+				self.as_bytes().is_empty()
+			}
+
+			/// Returns the first subtag of the list (if any).
+			pub fn first(&self) -> Option<&$item> {
+				if self.is_empty() {
+					None
+				} else {
+					let bytes = self.as_bytes();
+					let mut i = $offset;
+		
+					while i < bytes.len() && bytes[i] != b'-' {
+						i += 1
+					}
+		
+					unsafe {
+						Some($item::parse_unchecked(&bytes[..i]))
+					}
+				}
+			}
+		
+			/// Returns the last subtag of the list (if any).
+			pub fn last(&self) -> Option<&$item> {
+				if self.is_empty() {
+					None
+				} else {
+					let bytes = self.as_bytes();
+					let mut i = bytes.len()-1;
+		
+					while i > $offset+1 && bytes[i-1] != b'-' {
+						i -= 1
+					}
+		
+					unsafe {
+						Some($item::parse_unchecked(&bytes[i..]))
+					}
+				}
+			}
+
+			/// Iterate through the subtags of the list.
 			pub fn iter(&self) -> $id {
 				$id {
 					bytes: self.as_bytes(),
@@ -522,16 +772,22 @@ iterator!(LanguageExtension, LanguageExtensionIter, ExtendedLangTag, 0);
 
 iterator!(Variants, VariantsIter, Variant, 0);
 
+/// Mutable reference to the variants of a language tag.
 pub struct VariantsMut<'a> {
+	/// Language tag buffer.
 	buffer: &'a mut Vec<u8>,
+
+	/// Language tag parsing data.
 	p: &'a mut parse::ParsedLangTag
 }
 
 impl<'a> VariantsMut<'a> {
+	/// Checks if the list of variants is empty.
 	pub fn is_empty(&self) -> bool {
 		self.p.variant_end > self.p.region_end
 	}
 
+	/// Returns the first variant subtag of the list (if any).
 	pub fn first(&self) -> Option<&Variant> {
 		if self.is_empty() {
 			None
@@ -548,6 +804,7 @@ impl<'a> VariantsMut<'a> {
 		}
 	}
 
+	/// Returns the last variant subtag of the list (if any).
 	pub fn last(&self) -> Option<&Variant> {
 		if self.is_empty() {
 			None
@@ -564,6 +821,7 @@ impl<'a> VariantsMut<'a> {
 		}
 	}
 
+	/// Add a new variant subtag at the end.
 	pub fn push(&mut self, variant: &Variant) {
 		let bytes = variant.as_bytes();
 
@@ -578,6 +836,7 @@ impl<'a> VariantsMut<'a> {
 		self.p.privateuse_end += len;
 	}
 
+	/// Removes and return the last variant subtag of the list (if any).
 	pub fn pop(&mut self) -> Option<Variant<Vec<u8>>> {
 		match self.last() {
 			Some(last) => {
@@ -609,6 +868,7 @@ iterator!(Extension, ExtensionIter, ExtensionSubtag, 2);
 
 iterator!(PrivateUseSubtags, PrivateUseSubtagsIter, PrivateUseSubtag, 2);
 
+/// Extensions iterator.
 pub struct ExtensionsIter<'a> {
 	bytes: &'a [u8],
 	i: usize,

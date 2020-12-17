@@ -74,7 +74,7 @@ impl<T: AsRef<[u8]>> LangTag<T> {
 	pub fn script(&self) -> Option<&Script> {
 		if self.p.language_end < self.p.script_end {
 			unsafe {
-				Some(Script::parse_unchecked(&self.data.as_ref()[self.p.language_end..self.p.script_end]))
+				Some(Script::parse_unchecked(&self.data.as_ref()[(self.p.language_end+1)..self.p.script_end]))
 			}
 		} else {
 			None
@@ -85,7 +85,7 @@ impl<T: AsRef<[u8]>> LangTag<T> {
 	pub fn region(&self) -> Option<&Region> {
 		if self.p.script_end < self.p.region_end {
 			unsafe {
-				Some(Region::parse_unchecked(&self.data.as_ref()[self.p.script_end..self.p.region_end]))
+				Some(Region::parse_unchecked(&self.data.as_ref()[(self.p.script_end+1)..self.p.region_end]))
 			}
 		} else {
 			None
@@ -95,21 +95,21 @@ impl<T: AsRef<[u8]>> LangTag<T> {
 	#[inline]
 	pub fn variants(&self) -> &Variants {
 		unsafe {
-			Variants::parse_unchecked(&self.data.as_ref()[self.p.region_end..self.p.variant_end])
+			Variants::parse_unchecked(&self.data.as_ref()[(self.p.region_end+1)..self.p.variant_end])
 		}
 	}
 
 	#[inline]
 	pub fn extensions(&self) -> &Extensions {
 		unsafe {
-			Extensions::parse_unchecked(&self.data.as_ref()[self.p.variant_end..self.p.extension_end])
+			Extensions::parse_unchecked(&self.data.as_ref()[(self.p.variant_end+1)..self.p.extension_end])
 		}
 	}
 
 	#[inline]
 	pub fn private_use_subtags(&self) -> &PrivateUseSubtags {
 		unsafe {
-			PrivateUseSubtags::parse_unchecked(&self.data.as_ref()[self.p.extension_end..self.p.privateuse_end])
+			PrivateUseSubtags::parse_unchecked(&self.data.as_ref()[(self.p.extension_end+1)..self.p.privateuse_end])
 		}
 	}
 }
