@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - `LanguageTagBuf::as_ref` now returns a `LanguageTag<&[u8]>`.
 - Add `LanguageTag::cloned`.
+- Impl `Copy` for `LanguageTag`, `LanguageTagBuf` and `PrivateUseTag`.
 
 ## [0.1.1]
 ### Changed

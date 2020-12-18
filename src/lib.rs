@@ -419,7 +419,6 @@ pub use language::*;
 pub use variant::*;
 
 /// Language tag with borrowed data.
-#[derive(Clone)]
 pub enum LanguageTag<'a, T: ?Sized = [u8]> {
 	/// Normal language tag.
 	Normal(LangTag<&'a T>),
@@ -432,7 +431,7 @@ pub enum LanguageTag<'a, T: ?Sized = [u8]> {
 }
 
 /// Language tag with owned data.
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub enum LanguageTagBuf<T = Vec<u8>> {
 	/// Normal language tag.
 	Normal(LangTag<T>),
@@ -639,6 +638,18 @@ impl<'a> LanguageTag<'a> {
 		}
 	}
 }
+
+impl<'a, T: ?Sized> Clone for LanguageTag<'a, T> {
+	fn clone(&self) -> LanguageTag<'a, T> {
+		match self {
+			LanguageTag::Normal(tag) => LanguageTag::Normal(*tag),
+			LanguageTag::PrivateUse(tag) => LanguageTag::PrivateUse(*tag),
+			LanguageTag::Grandfathered(tag) => LanguageTag::Grandfathered(*tag)
+		}
+	}
+}
+
+impl<'a, T: ?Sized> Copy for LanguageTag<'a, T> {}
 
 impl<'a, T: AsRef<[u8]> + ?Sized> AsRef<[u8]> for LanguageTag<'a, T> {
 	#[inline]

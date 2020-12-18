@@ -23,7 +23,7 @@ use crate::{
 /// Normal language subtag.
 /// 
 /// The language subtag can be modified when the internal buffer type (`T`) is `Vec<u8>`.
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub struct LangTag<T> {
 	p: parse::ParsedLangTag,
 	data: T
