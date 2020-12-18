@@ -1,5 +1,6 @@
 use std::fmt;
 
+/// Parsing errors.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Error {
 	InvalidLangTag,
