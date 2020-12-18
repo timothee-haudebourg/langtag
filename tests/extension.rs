@@ -50,6 +50,8 @@ pub fn extensions_mut_remove() {
 pub fn extensions_mut_remove_subtag() {
 	let mut tag = langtag::LangTag::parse_copy("fr-a-ext1-ext2-b-ext3-ext4-a-ext5-a-ext6-c-ext7-a-ext8-ext9").unwrap();
 	let a: langtag::Singleton = 'a'.try_into().unwrap();
+	let b: langtag::Singleton = 'b'.try_into().unwrap();
+	let c: langtag::Singleton = 'c'.try_into().unwrap();
 	tag.extensions_mut().remove_subtag(a, "ext1");
 	assert_eq!(tag, "fr-a-ext2-b-ext3-ext4-a-ext5-a-ext6-c-ext7-a-ext8-ext9");
 	tag.extensions_mut().remove_subtag(a, "ext2");
@@ -62,4 +64,11 @@ pub fn extensions_mut_remove_subtag() {
 	assert_eq!(tag, "fr-b-ext3-ext4-a-ext6-c-ext7");
 	tag.extensions_mut().remove_subtag(a, "ext6");
 	assert_eq!(tag, "fr-b-ext3-ext4-c-ext7");
+
+	tag.extensions_mut().remove_subtag(c, "ext7");
+	assert_eq!(tag, "fr-b-ext3-ext4");
+	tag.extensions_mut().remove_subtag(b, "ext3");
+	assert_eq!(tag, "fr-b-ext4");
+	tag.extensions_mut().remove_subtag(b, "ext4");
+	assert_eq!(tag, "fr");
 }

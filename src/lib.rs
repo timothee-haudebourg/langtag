@@ -338,6 +338,7 @@ macro_rules! component {
 		}
 
 		impl $id<Vec<u8>> {
+			/// Parse and copy the input data.
 			pub fn parse_copy<'a, T: AsRef<[u8]> + ?Sized>(bytes: &'a T) -> Result<$id<Vec<u8>>, Error> {
 				let bytes = bytes.as_ref();
 				let mut buffer = Vec::new();
@@ -346,6 +347,10 @@ macro_rules! component {
 				$id::new(buffer)
 			}
 
+			/// Copy the input data without checking its syntax correctness.
+			/// 
+			/// ## Safety
+			/// The input data must be syntactically correct.
 			pub unsafe fn parse_copy_unchecked<'a, T: AsRef<[u8]> + ?Sized>(bytes: &'a T) -> $id<Vec<u8>> {
 				let bytes = bytes.as_ref();
 				let mut buffer = Vec::new();
@@ -357,16 +362,19 @@ macro_rules! component {
 
 		impl<T: AsRef<[u8]> + ?Sized> $id<T> {
 			#[inline]
+			/// Bytes length.
 			pub fn len(&self) -> usize {
 				self.as_bytes().len()
 			}
 
 			#[inline]
+			/// Return a reference to the underlying data.
 			pub fn as_bytes(&self) -> &[u8] {
 				self.data.as_ref()
 			}
 
 			#[inline]
+			/// Return a reference to the underlying data as a string.
 			pub fn as_str(&self) -> &str {
 				unsafe { std::str::from_utf8_unchecked(self.as_bytes()) }
 			}
@@ -472,12 +480,14 @@ macro_rules! component {
 		}
 
 		impl<T: AsRef<[u8]> + ?Sized> fmt::Display for $id<T> {
+			#[inline]
 			fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 				fmt::Display::fmt(self.as_str(), f)
 			}
 		}
 
 		impl<T: AsRef<[u8]> + ?Sized> fmt::Debug for $id<T> {
+			#[inline]
 			fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 				fmt::Debug::fmt(self.as_str(), f)
 			}
@@ -518,6 +528,7 @@ macro_rules! iterator {
 		impl<'a> Iterator for $id<'a> {
 			type Item = &'a $item;
 		
+			#[inline]
 			fn next(&mut self) -> Option<&'a $item> {
 				if self.i < self.bytes.len() {
 					if self.bytes[self.i] == b'-' {
@@ -541,6 +552,7 @@ macro_rules! iterator {
 		
 		impl $collection {
 			/// Empty list (the empty string).
+			#[inline]
 			pub fn empty() -> &'static $collection {
 				unsafe {
 					$collection::parse_unchecked(b"")
@@ -548,11 +560,13 @@ macro_rules! iterator {
 			}
 
 			/// Checks if the list is empty.
+			#[inline]
 			pub fn is_empty(&self) -> bool {
 				self.as_bytes().is_empty()
 			}
 
 			/// Returns the first subtag of the list (if any).
+			#[inline]
 			pub fn first(&self) -> Option<&$item> {
 				if self.is_empty() {
 					None
@@ -571,6 +585,7 @@ macro_rules! iterator {
 			}
 		
 			/// Returns the last subtag of the list (if any).
+			#[inline]
 			pub fn last(&self) -> Option<&$item> {
 				if self.is_empty() {
 					None
@@ -589,11 +604,24 @@ macro_rules! iterator {
 			}
 
 			/// Iterate through the subtags of the list.
+			#[inline]
 			pub fn iter(&self) -> $id {
 				$id {
 					bytes: self.as_bytes(),
 					i: $offset
 				}
+			}
+
+			/// Checks if the given subtag is included the list.
+			#[inline]
+			pub fn contains<T: AsRef<[u8]> + ?Sized>(&self, subtag: &T) -> bool {
+				for st in self.iter() {
+					if st == subtag.as_ref() {
+						return true
+					}
+				}
+
+				false
 			}
 		}
 		
@@ -601,6 +629,7 @@ macro_rules! iterator {
 			type Item = &'a $item;
 			type IntoIter = $id<'a>;
 		
+			#[inline]
 			fn into_iter(self) -> $id<'a> {
 				$id {
 					bytes: self.as_bytes(),

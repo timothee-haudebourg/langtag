@@ -318,10 +318,11 @@ impl<'a> ExtensionsMut<'a> {
 	}
 
 	/// Remove the extension identified by the given singleton.
-	pub fn remove(&mut self, singleton: Singleton) {
+	pub fn remove(&mut self, singleton: Singleton) -> bool {
 		let mut i = self.p.variant_end+1;
 		let mut subtag_offset = i;
 		let mut extension_offset = None;
+		let mut removed = false;
 
 		while i < self.p.extension_end {
 			if self.buffer[i] == b'-' {
@@ -337,7 +338,8 @@ impl<'a> ExtensionsMut<'a> {
 							self.p.extension_end -= len;
 							self.p.privateuse_end -= len;
 							i = offset+2;
-							extension_offset = None
+							extension_offset = None;
+							removed = true
 						}
 					}
 				}
@@ -353,16 +355,20 @@ impl<'a> ExtensionsMut<'a> {
 			let len = end-offset;
 			crate::replace(self.buffer, offset..end, &[]);
 			self.p.extension_end -= len;
-			self.p.privateuse_end -= len
+			self.p.privateuse_end -= len;
+			removed = true
 		}
+
+		removed
 	}
 
-	pub fn remove_subtag<T: AsRef<[u8]> + ?Sized>(&mut self, singleton: Singleton, subtag: &T) {
+	pub fn remove_subtag<T: AsRef<[u8]> + ?Sized>(&mut self, singleton: Singleton, subtag: &T) -> bool {
 		let subtag = subtag.as_ref();
 		let mut i = self.p.variant_end+1;
 		let mut subtag_offset = i;
 		let mut scope_offset = 0;
 		let mut in_scope = false;
+		let mut removed = false;
 
 		while i < self.p.extension_end {
 			if self.buffer[i] == b'-' {
@@ -380,6 +386,7 @@ impl<'a> ExtensionsMut<'a> {
 					self.p.extension_end -= len;
 					self.p.privateuse_end -= len;
 					i -= len;
+					removed = true
 				}
 
 				subtag_offset = i+1
@@ -397,7 +404,10 @@ impl<'a> ExtensionsMut<'a> {
 			let len = i-offset;
 			crate::replace(self.buffer, offset..i, &[]);
 			self.p.extension_end -= len;
-			self.p.privateuse_end -= len
+			self.p.privateuse_end -= len;
+			removed = true
 		}
+
+		removed
 	}
 }

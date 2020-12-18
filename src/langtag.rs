@@ -138,17 +138,85 @@ impl<T: AsMut<Vec<u8>>> LangTag<T> {
 
 	#[inline]
 	pub fn set_language(&mut self, lang: &Language) {
-		unimplemented!() // TODO
+		let lang = lang.as_bytes();
+		crate::replace(self.data.as_mut(), 0..self.p.language_end, lang);
+		let new_end = lang.len();
+		if self.p.language_end < new_end {
+			let diff = new_end - self.p.language_end;
+			self.p.script_end += diff;
+			self.p.region_end += diff;
+			self.p.variant_end += diff;
+			self.p.extension_end += diff;
+			self.p.privateuse_end += diff;
+		} else {
+			let diff = self.p.language_end - new_end;
+			self.p.script_end -= diff;
+			self.p.region_end -= diff;
+			self.p.variant_end -= diff;
+			self.p.extension_end -= diff;
+			self.p.privateuse_end -= diff;
+		}
+		self.p.language_end = new_end;
 	}
 
 	#[inline]
 	pub fn set_script(&mut self, script: Option<&Script>) {
-		unimplemented!() // TODO
+		let new_end = match script {
+			Some(script) => {
+				let script = script.as_bytes();
+				crate::replace(self.data.as_mut(), self.p.language_end..self.p.script_end, script);
+				crate::replace(self.data.as_mut(), self.p.language_end..self.p.language_end, &[b'-']);
+				self.p.language_end + 1 + script.len()
+			},
+			None => {
+				crate::replace(self.data.as_mut(), self.p.language_end..self.p.script_end, &[]);
+				self.p.language_end
+			}
+		};
+
+		if self.p.script_end < new_end {
+			let diff = new_end - self.p.script_end;
+			self.p.region_end += diff;
+			self.p.variant_end += diff;
+			self.p.extension_end += diff;
+			self.p.privateuse_end += diff;
+		} else {
+			let diff = self.p.script_end - new_end;
+			self.p.region_end -= diff;
+			self.p.variant_end -= diff;
+			self.p.extension_end -= diff;
+			self.p.privateuse_end -= diff;
+		}
+		self.p.script_end = new_end;
 	}
 
 	#[inline]
 	pub fn set_region(&mut self, region: Option<&Region>) {
-		unimplemented!() // TODO
+		let new_end = match region {
+			Some(region) => {
+				let region = region.as_bytes();
+				crate::replace(self.data.as_mut(), self.p.script_end..self.p.region_end, region);
+				crate::replace(self.data.as_mut(), self.p.script_end..self.p.script_end, &[b'-']);
+				self.p.script_end + 1 + region.len()
+			},
+			None => {
+				crate::replace(self.data.as_mut(), self.p.script_end..self.p.region_end, &[]);
+				self.p.script_end
+			}
+		};
+
+		if self.p.region_end < new_end {
+			let diff = new_end - self.p.region_end;
+			self.p.variant_end += diff;
+			self.p.extension_end += diff;
+			self.p.privateuse_end += diff;
+		} else {
+			let diff = self.p.region_end - new_end;	
+			self.p.variant_end -= diff;
+			self.p.extension_end -= diff;
+			self.p.privateuse_end -= diff;
+		}
+		self.p.region_end = new_end;
 	}
 
 	#[inline]
@@ -171,7 +239,7 @@ impl<T: AsMut<Vec<u8>>> LangTag<T> {
 	pub fn private_use_subtags_mut(&mut self) -> PrivateUseSubtagsMut {
 		PrivateUseSubtagsMut {
 			buffer: self.data.as_mut(),
-			p: &mut self.p
+			offset: self.p.extension_end
 		}
 	}
 }
