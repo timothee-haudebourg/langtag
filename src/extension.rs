@@ -9,8 +9,6 @@ use std::{
 	convert::TryFrom
 };
 use crate::{
-	component,
-	iterator,
 	parse,
 	Error
 };
@@ -19,6 +17,7 @@ use crate::{
 pub struct Singleton(u8);
 
 impl Singleton {
+	/// Convert into the underlying byte.
 	#[inline]
 	pub fn unwrap(self) -> u8 {
 		self.0
@@ -264,6 +263,7 @@ impl<'a> Iterator for ExtensionSubtagsIter<'a> {
 	}
 }
 
+/// Mutable reference to extension subtags.
 pub struct ExtensionsMut<'a> {
 	/// Language tag buffer.
 	pub(crate) buffer: &'a mut Vec<u8>,
@@ -273,7 +273,11 @@ pub struct ExtensionsMut<'a> {
 }
 
 impl<'a> ExtensionsMut<'a> {
-	pub fn insert(&mut self, singleton: Singleton, subtag: &ExtensionSubtag) {
+	/// Insert a new subtag for the given extension singleton without duplication.
+	/// 
+	/// Returns `true` if the extension subtag has been added,
+	/// or `false` if it was already present.
+	pub fn insert(&mut self, singleton: Singleton, subtag: &ExtensionSubtag) -> bool {
 		let mut i = self.p.variant_end+1;
 		let mut subtag_offset = i;
 		let mut insert_offset = None;
@@ -283,6 +287,8 @@ impl<'a> ExtensionsMut<'a> {
 			if self.buffer[i] == b'-' {
 				if subtag_offset+1 == i {
 					current_singleton = self.buffer[subtag_offset];
+				} else if singleton == current_singleton && subtag == &self.buffer[subtag_offset..i] {
+					return false
 				}
 
 				if singleton == current_singleton {
@@ -296,6 +302,10 @@ impl<'a> ExtensionsMut<'a> {
 		}
 
 		if i == self.p.extension_end && singleton == current_singleton {
+			if subtag == &self.buffer[subtag_offset..] {
+				return false
+			}
+
 			insert_offset = Some(i);
 		}
 
@@ -315,9 +325,13 @@ impl<'a> ExtensionsMut<'a> {
 
 		self.p.extension_end += len;
 		self.p.privateuse_end += len;
+		true
 	}
 
 	/// Remove the extension identified by the given singleton.
+	/// 
+	/// Return `true` if the extension was present and `false` otherwise
+	/// (in which case the language tag is left unchanged).
 	pub fn remove(&mut self, singleton: Singleton) -> bool {
 		let mut i = self.p.variant_end+1;
 		let mut subtag_offset = i;
@@ -362,6 +376,10 @@ impl<'a> ExtensionsMut<'a> {
 		removed
 	}
 
+	/// Remove the given extension subtag.
+	/// 
+	/// Return `true` if the extension subtag was present and `false` otherwise
+	/// (in which case the language tag is left unchanged).
 	pub fn remove_subtag<T: AsRef<[u8]> + ?Sized>(&mut self, singleton: Singleton, subtag: &T) -> bool {
 		let subtag = subtag.as_ref();
 		let mut i = self.p.variant_end+1;

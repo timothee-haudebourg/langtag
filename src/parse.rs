@@ -1,5 +1,6 @@
 use crate::Error;
 
+/// Language tag parsing metadata.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct ParsedLangTag {
 	pub language_end: usize,
@@ -11,6 +12,7 @@ pub struct ParsedLangTag {
 }
 
 impl ParsedLangTag {
+	/// Returns the bytes length of the tag.
 	pub fn len(&self) -> usize {
 		self.privateuse_end
 	}

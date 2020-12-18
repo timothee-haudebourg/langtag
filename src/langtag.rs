@@ -19,12 +19,17 @@ use crate::{
 	PrivateUseSubtagsMut
 };
 
+/// Normal language subtag.
+/// 
+/// The language subtag can be modified when the internal buffer type (`T`) is `Vec<u8>`.
 pub struct LangTag<T> {
 	p: crate::parse::ParsedLangTag,
 	data: T
 }
 
 impl<'a> LangTag<&'a [u8]> {
+	/// Parse a normal language tag.
+	#[inline]
 	pub fn parse<T: AsRef<[u8]> + ?Sized>(bytes: &'a T) -> Result<LangTag<&'a [u8]>, Error> {
 		let bytes = bytes.as_ref();
 		let p = crate::parse::langtag(bytes, 0)?;
@@ -41,6 +46,10 @@ impl<'a> LangTag<&'a [u8]> {
 }
 
 impl LangTag<Vec<u8>> {
+	/// Parse and copy a normal language tag.
+	/// 
+	/// The returned normal language tag owns its buffer.
+	#[inline]
 	pub fn parse_copy<T: AsRef<[u8]> + ?Sized>(bytes: &T) -> Result<LangTag<Vec<u8>>, Error> {
 		let bytes = bytes.as_ref();
 		let mut buffer = Vec::new();
@@ -51,6 +60,7 @@ impl LangTag<Vec<u8>> {
 }
 
 impl<T: AsRef<[u8]>> LangTag<T> {
+	/// Create a new normal language tag by parsing and using the given buffer.
 	#[inline]
 	pub fn new(data: T) -> Result<LangTag<T>, Error> {
 		let bytes = data.as_ref();
@@ -66,16 +76,19 @@ impl<T: AsRef<[u8]>> LangTag<T> {
 		}
 	}
 
+	/// Returns the bytes representation of the tag.
 	#[inline]
 	pub fn as_bytes(&self) -> &[u8] {
 		self.data.as_ref()
 	}
 
+	/// Returns the string representation of the tag.
 	#[inline]
 	pub fn as_str(&self) -> &str {
 		unsafe { std::str::from_utf8_unchecked(self.as_bytes()) }
 	}
 
+	/// Get the language subtags.
 	#[inline]
 	pub fn language(&self) -> &Language {
 		unsafe {
@@ -83,6 +96,7 @@ impl<T: AsRef<[u8]>> LangTag<T> {
 		}
 	}
 
+	/// Get the script subtag, if any.
 	#[inline]
 	pub fn script(&self) -> Option<&Script> {
 		if self.p.language_end < self.p.script_end {
@@ -94,6 +108,7 @@ impl<T: AsRef<[u8]>> LangTag<T> {
 		}
 	}
 
+	/// Get the region subtag, if any.
 	#[inline]
 	pub fn region(&self) -> Option<&Region> {
 		if self.p.script_end < self.p.region_end {
@@ -105,6 +120,7 @@ impl<T: AsRef<[u8]>> LangTag<T> {
 		}
 	}
 
+	/// Get the variant subtags.
 	#[inline]
 	pub fn variants(&self) -> &Variants {
 		unsafe {
@@ -112,6 +128,7 @@ impl<T: AsRef<[u8]>> LangTag<T> {
 		}
 	}
 
+	/// Get the extension subtags.
 	#[inline]
 	pub fn extensions(&self) -> &Extensions {
 		unsafe {
@@ -119,6 +136,7 @@ impl<T: AsRef<[u8]>> LangTag<T> {
 		}
 	}
 
+	/// Get the private use subtags.
 	#[inline]
 	pub fn private_use_subtags(&self) -> &PrivateUseSubtags {
 		unsafe {
@@ -128,6 +146,7 @@ impl<T: AsRef<[u8]>> LangTag<T> {
 }
 
 impl<T: AsMut<Vec<u8>>> LangTag<T> {
+	/// Get and modify the language subtags.
 	#[inline]
 	pub fn language_mut(&mut self) -> LanguageMut {
 		LanguageMut {
@@ -136,6 +155,7 @@ impl<T: AsMut<Vec<u8>>> LangTag<T> {
 		}
 	}
 
+	/// Set the language subtags.
 	#[inline]
 	pub fn set_language(&mut self, lang: &Language) {
 		let lang = lang.as_bytes();
@@ -159,6 +179,7 @@ impl<T: AsMut<Vec<u8>>> LangTag<T> {
 		self.p.language_end = new_end;
 	}
 
+	/// Set the script subtag.
 	#[inline]
 	pub fn set_script(&mut self, script: Option<&Script>) {
 		let new_end = match script {
@@ -190,6 +211,7 @@ impl<T: AsMut<Vec<u8>>> LangTag<T> {
 		self.p.script_end = new_end;
 	}
 
+	/// Set the region subtag.
 	#[inline]
 	pub fn set_region(&mut self, region: Option<&Region>) {
 		let new_end = match region {
@@ -219,6 +241,7 @@ impl<T: AsMut<Vec<u8>>> LangTag<T> {
 		self.p.region_end = new_end;
 	}
 
+	/// Get and modify the variant subtags.
 	#[inline]
 	pub fn variants_mut(&mut self) -> VariantsMut {
 		VariantsMut {
@@ -227,6 +250,7 @@ impl<T: AsMut<Vec<u8>>> LangTag<T> {
 		}
 	}
 
+	/// Get and modify the extension subtags.
 	#[inline]
 	pub fn extensions_mut(&mut self) -> ExtensionsMut {
 		ExtensionsMut {
@@ -235,6 +259,7 @@ impl<T: AsMut<Vec<u8>>> LangTag<T> {
 		}
 	}
 
+	/// Get and modify the private use subtags.
 	#[inline]
 	pub fn private_use_subtags_mut(&mut self) -> PrivateUseSubtagsMut {
 		PrivateUseSubtagsMut {
@@ -245,6 +270,7 @@ impl<T: AsMut<Vec<u8>>> LangTag<T> {
 }
 
 impl<T: AsRef<[u8]>, U: AsRef<[u8]>> PartialEq<LangTag<U>> for LangTag<T> {
+	#[inline]
 	fn eq(&self, other: &LangTag<U>) -> bool {
 		crate::case_insensitive_eq(self.data.as_ref(), other.data.as_ref())
 	}
@@ -260,18 +286,21 @@ impl<T: AsRef<[u8]>, U: AsRef<[u8]> + ?Sized> PartialEq<U> for LangTag<T> {
 impl<T: AsRef<[u8]>> Eq for LangTag<T> {}
 
 impl<T: AsRef<[u8]>> Hash for LangTag<T> {
+	#[inline]
 	fn hash<H: Hasher>(&self, h: &mut H) {
 		crate::case_insensitive_hash(self.data.as_ref(), h)
 	}
 }
 
 impl<T: AsRef<[u8]>> fmt::Display for LangTag<T> {
+	#[inline]
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 		fmt::Display::fmt(self.as_str(), f)
 	}
 }
 
 impl<T: AsRef<[u8]>> fmt::Debug for LangTag<T> {
+	#[inline]
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 		fmt::Debug::fmt(self.as_str(), f)
 	}

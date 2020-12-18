@@ -4,6 +4,18 @@ use crate::{
 	Language
 };
 
+/// Grandfathered tags.
+/// 
+/// Prior to [RFC 4646](https://tools.ietf.org/html/rfc4646),
+/// whole language tags were registered according to
+/// the rules in [RFC 1766](https://tools.ietf.org/html/rfc1766)
+/// and/or [RFC 3066](https://tools.ietf.org/html/rfc3066).
+/// All of these registered tags remain valid as language tags.
+/// Many of these registered tags were made redundant by the advent of
+/// either [RFC 4646](https://tools.ietf.org/html/rfc4646) or
+/// [RFC 5646](https://tools.ietf.org/html/rfc5646).
+/// The remainder of the previously registered tags are "grandfathered",
+/// and are all veriants of this enum type.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum GrandfatheredTag {
 	// irregular
@@ -38,6 +50,7 @@ pub enum GrandfatheredTag {
 
 use GrandfatheredTag::*;
 
+/// List of all grandfathered tags.
 pub static GRANDFATHERED: [GrandfatheredTag; 26] = [
 	EnGbOed,
 	IAmi,
@@ -68,6 +81,8 @@ pub static GRANDFATHERED: [GrandfatheredTag; 26] = [
 ];
 
 impl GrandfatheredTag {
+	/// Try to parse a grandfathered tag.
+	#[inline]
 	pub fn new<T: AsRef<[u8]>>(t: T) -> Result<GrandfatheredTag, T> {
 		match Self::try_from(t.as_ref()) {
 			Ok(tag) => Ok(tag),
@@ -75,6 +90,8 @@ impl GrandfatheredTag {
 		}
 	}
 
+	/// Get the language the grandfathered tag if it is regular.
+	#[inline]
 	pub fn language(&self) -> Option<&Language> {
 		unsafe {
 			match self {
@@ -92,6 +109,8 @@ impl GrandfatheredTag {
 		}
 	}
 
+	/// Returns the bytes representation of the tag.
+	#[inline]
 	pub fn as_bytes(&self) -> &[u8] {
 		use GrandfatheredTag::*;
 		match self {
@@ -125,6 +144,8 @@ impl GrandfatheredTag {
 		}
 	}
 
+	/// Returns the string representation of the tag.
+	#[inline]
 	pub fn as_str(&self) -> &str {
 		unsafe {
 			std::str::from_utf8_unchecked(self.as_bytes())
@@ -135,6 +156,7 @@ impl GrandfatheredTag {
 impl<'a> TryFrom<&'a [u8]> for GrandfatheredTag {
 	type Error = Error;
 
+	#[inline]
 	fn try_from(bytes: &'a [u8]) -> Result<GrandfatheredTag, Error> {
 		for tag in &GRANDFATHERED {
 			if crate::case_insensitive_eq(tag.as_bytes(), bytes) {

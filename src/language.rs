@@ -9,8 +9,6 @@ use std::{
 	convert::TryFrom
 };
 use crate::{
-	component,
-	iterator,
 	parse,
 	Error
 };
@@ -138,6 +136,7 @@ impl Language {
 	}
 }
 
+/// Mutable reference to language subtags.
 pub struct LanguageMut<'a> {
 	/// Language tag buffer.
 	pub(crate) buffer: &'a mut Vec<u8>,
@@ -258,6 +257,7 @@ impl<'a> LanguageMut<'a> {
 		replaced
 	}
 
+	/// Get and modify the extended language subtags, if any.
 	#[inline]
 	pub fn extension_mut(&mut self) -> Option<LanguageExtensionMut> {
 		let primary_len = self.as_ref().primary_len();
@@ -272,6 +272,7 @@ impl<'a> LanguageMut<'a> {
 	}
 }
 
+/// Mutable reference to extended language subtags.
 pub struct LanguageExtensionMut<'a> {
 	/// Language tag buffer.
 	buffer: &'a mut Vec<u8>,

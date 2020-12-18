@@ -9,8 +9,6 @@ use std::{
 	convert::TryFrom
 };
 use crate::{
-	component,
-	iterator,
 	parse,
 	Error
 };
@@ -45,11 +43,13 @@ pub struct VariantsMut<'a> {
 
 impl<'a> VariantsMut<'a> {
 	/// Checks if the list of variants is empty.
+	#[inline]
 	pub fn is_empty(&self) -> bool {
 		self.p.variant_end <= self.p.region_end+1
 	}
 
 	/// Returns the first variant subtag of the list (if any).
+	#[inline]
 	pub fn first(&self) -> Option<&Variant> {
 		if self.is_empty() {
 			None
@@ -67,6 +67,7 @@ impl<'a> VariantsMut<'a> {
 	}
 
 	/// Returns the last variant subtag of the list (if any).
+	#[inline]
 	pub fn last(&self) -> Option<&Variant> {
 		if self.is_empty() {
 			None
@@ -84,6 +85,7 @@ impl<'a> VariantsMut<'a> {
 	}
 
 	/// Add a new variant subtag at the end.
+	#[inline]
 	pub fn push(&mut self, variant: &Variant) {
 		let bytes = variant.as_bytes();
 
@@ -99,6 +101,7 @@ impl<'a> VariantsMut<'a> {
 	}
 
 	/// Removes and return the last variant subtag of the list (if any).
+	#[inline]
 	pub fn pop(&mut self) -> Option<Variant<Vec<u8>>> {
 		match self.last() {
 			Some(last) => {

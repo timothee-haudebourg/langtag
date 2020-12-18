@@ -16,280 +16,6 @@ use std::{
 	}
 };
 
-mod error;
-mod parse;
-mod langtag;
-mod privateuse;
-mod grandfathered;
-mod variant;
-mod language;
-mod extension;
-
-pub use error::*;
-pub use self::langtag::*;
-pub use privateuse::*;
-pub use grandfathered::*;
-pub use extension::*;
-pub use language::*;
-pub use variant::*;
-
-pub enum LanguageTag<'a, T: ?Sized = [u8]> {
-	Normal(LangTag<&'a T>),
-	PrivateUse(&'a PrivateUseTag<T>),
-	Grandfathered(GrandfatheredTag)
-}
-
-pub enum LanguageTagBuf<T = Vec<u8>> {
-	Normal(LangTag<T>),
-	PrivateUse(PrivateUseTag<T>),
-	Grandfathered(GrandfatheredTag)
-}
-
-impl<T: AsRef<[u8]>> LanguageTagBuf<T> {
-	#[inline]
-	pub fn new(t: T) -> Result<LanguageTagBuf<T>, Error> {
-		match GrandfatheredTag::new(t) {
-			Ok(tag) => Ok(LanguageTagBuf::Grandfathered(tag)),
-			Err(t) => match PrivateUseTag::new(t) {
-				Ok(tag) => Ok(LanguageTagBuf::PrivateUse(tag)),
-				Err(t) => {
-					Ok(LanguageTagBuf::Normal(LangTag::new(t)?))
-				}
-			}
-		}
-	}
-}
-
-impl LanguageTagBuf {
-	#[inline]
-	pub fn parse_copy<T: AsRef<[u8]> + ?Sized>(t: &T) -> Result<LanguageTagBuf, Error> {
-		let bytes = t.as_ref();
-		let mut buffer = Vec::new();
-		buffer.resize(bytes.len(), 0);
-		buffer.copy_from_slice(bytes);
-		Self::new(buffer)
-	}
-}
-
-macro_rules! language_tag_impl {
-	() => {
-		#[inline]
-		pub fn as_bytes(&self) -> &[u8] {
-			match self {
-				Self::Normal(tag) => tag.as_bytes(),
-				Self::PrivateUse(tag) => tag.as_bytes(),
-				Self::Grandfathered(tag) => tag.as_bytes()
-			}
-		}
-	
-		#[inline]
-		pub fn as_str(&self) -> &str {
-			match self {
-				Self::Normal(tag) => tag.as_str(),
-				Self::PrivateUse(tag) => tag.as_str(),
-				Self::Grandfathered(tag) => tag.as_str()
-			}
-		}
-	
-		#[inline]
-		pub fn is_normal(&self) -> bool {
-			match self {
-				Self::Normal(_) => true,
-				_ => false
-			}
-		}
-	
-		#[inline]
-		pub fn is_private_use(&self) -> bool {
-			match self {
-				Self::PrivateUse(_) => true,
-				_ => false
-			}
-		}
-	
-		#[inline]
-		pub fn is_grandfathered(&self) -> bool {
-			match self {
-				Self::Grandfathered(_) => true,
-				_ => false
-			}
-		}
-	
-		#[inline]
-		pub fn language(&self) -> Option<&Language> {
-			match self {
-				Self::Normal(tag) => Some(tag.language()),
-				Self::PrivateUse(_) => None,
-				Self::Grandfathered(tag) => tag.language()
-			}
-		}
-	
-		#[inline]
-		pub fn script(&self) -> Option<&Script> {
-			match self {
-				Self::Normal(tag) => tag.script(),
-				Self::PrivateUse(_) => None,
-				Self::Grandfathered(_) => None
-			}
-		}
-	
-		#[inline]
-		pub fn region(&self) -> Option<&Region> {
-			match self {
-				Self::Normal(tag) => tag.region(),
-				Self::PrivateUse(_) => None,
-				Self::Grandfathered(_) => None
-			}
-		}
-	
-		#[inline]
-		pub fn variants(&self) -> &Variants {
-			match self {
-				Self::Normal(tag) => tag.variants(),
-				Self::PrivateUse(_) => Variants::empty(),
-				Self::Grandfathered(_) => Variants::empty()
-			}
-		}
-	
-		#[inline]
-		pub fn extensions(&self) -> &Extensions {
-			match self {
-				Self::Normal(tag) => tag.extensions(),
-				Self::PrivateUse(_) => Extensions::empty(),
-				Self::Grandfathered(_) => Extensions::empty()
-			}
-		}
-	
-		#[inline]
-		pub fn private_use_subtags(&self) -> &PrivateUseSubtags {
-			match self {
-				Self::Normal(tag) => tag.private_use_subtags(),
-				Self::PrivateUse(tag) => (*tag).subtags(),
-				Self::Grandfathered(_) => PrivateUseSubtags::empty()
-			}
-		}
-	}
-}
-
-impl <'a, T: AsRef<[u8]> + ?Sized> LanguageTag<'a, T> {
-	language_tag_impl!();
-}
-
-impl <T: AsRef<[u8]>> LanguageTagBuf<T> {
-	language_tag_impl!();
-}
-
-impl<'a> LanguageTag<'a> {
-	#[inline]
-	pub fn parse<T: AsRef<[u8]> + ?Sized>(t: &'a T) -> Result<LanguageTag<'a>, Error> {
-		match GrandfatheredTag::new(t) {
-			Ok(tag) => Ok(LanguageTag::Grandfathered(tag)),
-			Err(_) => match PrivateUseTag::parse(t) {
-				Ok(tag) => Ok(LanguageTag::PrivateUse(tag)),
-				Err(_) => {
-					Ok(LanguageTag::Normal(LangTag::parse(t)?))
-				}
-			}
-		}
-	}
-}
-
-impl<'a, T: AsRef<[u8]> + ?Sized> AsRef<[u8]> for LanguageTag<'a, T> {
-	#[inline]
-	fn as_ref(&self) -> &[u8] {
-		self.as_bytes()
-	}
-}
-
-impl<'a, T: AsRef<[u8]> + ?Sized> AsRef<str> for LanguageTag<'a, T> {
-	#[inline]
-	fn as_ref(&self) -> &str {
-		self.as_str()
-	}
-}
-
-impl<'a, T: AsRef<[u8]> + ?Sized, U: AsRef<[u8]> + ?Sized> PartialEq<U> for LanguageTag<'a, T> {
-	#[inline]
-	fn eq(&self, other: &U) -> bool {
-		case_insensitive_eq(self.as_bytes(), other.as_ref())
-	}
-}
-
-impl<'a, T: AsRef<[u8]> + ?Sized> Eq for LanguageTag<'a, T> { }
-
-impl<'a, T: AsRef<[u8]> + ?Sized> fmt::Display for LanguageTag<'a, T> {
-	#[inline]
-	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-		fmt::Display::fmt(self.as_str(), f)
-	}
-}
-
-impl<'a, T: AsRef<[u8]> + ?Sized> fmt::Debug for LanguageTag<'a, T> {
-	#[inline]
-	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-		fmt::Debug::fmt(self.as_str(), f)
-	}
-}
-
-pub type LangTagBuf = LangTag<Vec<u8>>;
-pub type PrivateUseTagBuf = PrivateUseTag<Vec<u8>>;
-
-#[inline]
-pub(crate) fn into_smallcase(c: u8) -> u8 {
-	if c >= b'A' && c <= b'Z' {
-		c + 0x20
-	} else {
-		c
-	}
-}
-
-#[inline]
-pub(crate) fn case_insensitive_eq(a: &[u8], b: &[u8]) -> bool {
-	if a.len() == b.len() {
-		for i in 0..a.len() {
-			if into_smallcase(a[i]) != into_smallcase(b[i]) {
-				return false
-			}
-		}
-
-		true
-	} else {
-		false
-	}
-}
-
-#[inline]
-pub(crate) fn case_insensitive_hash<H: Hasher>(bytes: &[u8], hasher: &mut H) {
-	for b in bytes {
-		into_smallcase(*b).hash(hasher)
-	}
-}
-
-#[inline]
-pub(crate) fn case_insensitive_cmp(a: &[u8], b: &[u8]) -> Ordering {
-	let mut i = 0;
-
-	loop {
-		if a.len() <= i {
-			if b.len() <= i {
-				return Ordering::Equal
-			}
-
-			return Ordering::Greater
-		} else if b.len() <= i {
-			return Ordering::Less
-		} else {
-			match into_smallcase(a[i]).cmp(&into_smallcase(b[i])) {
-				Ordering::Equal => {
-					i += 1
-				},
-				ord => return ord
-			}
-		}
-	}
-}
-
-#[macro_export]
 macro_rules! component {
 	($(#[ doc = $doc:tt ])* $parser:ident, $multi:expr, $id:ident, $err:ident) => {
 		$(#[doc=$doc])*
@@ -298,6 +24,7 @@ macro_rules! component {
 		}
 
 		impl<T: AsRef<[u8]>> $id<T> {
+			/// Parse and use the given data.
 			#[inline]
 			pub fn new(t: T) -> Result<$id<T>, Error> {
 				let bytes = t.as_ref();
@@ -311,6 +38,10 @@ macro_rules! component {
 				}
 			}
 
+			/// Use the given data as buffer without parsing it.
+			/// 
+			/// ## Safety
+			/// The given data must be syntactically correct.
 			#[inline]
 			pub unsafe fn new_unchecked(t: T) -> $id<T> {
 				$id {
@@ -320,6 +51,8 @@ macro_rules! component {
 		}
 
 		impl $id<[u8]> {
+			/// Parse and borrow the given data.
+			#[inline]
 			pub fn parse<'a, T: AsRef<[u8]> + ?Sized>(bytes: &'a T) -> Result<&'a $id<[u8]>, Error> {
 				let bytes = bytes.as_ref();
 
@@ -332,6 +65,11 @@ macro_rules! component {
 				}
 			}
 
+			/// Borrow the given data without checking that it is syntactically correct.
+			/// 
+			/// ## Safety
+			/// The data must be syntactically correct.
+			#[inline]
 			pub unsafe fn parse_unchecked<'a, T: AsRef<[u8]> + ?Sized>(bytes: &'a T) -> &'a $id<[u8]> {
 				&*(bytes.as_ref() as *const [u8] as *const $id<[u8]>)
 			}
@@ -339,6 +77,7 @@ macro_rules! component {
 
 		impl $id<Vec<u8>> {
 			/// Parse and copy the input data.
+			#[inline]
 			pub fn parse_copy<'a, T: AsRef<[u8]> + ?Sized>(bytes: &'a T) -> Result<$id<Vec<u8>>, Error> {
 				let bytes = bytes.as_ref();
 				let mut buffer = Vec::new();
@@ -351,6 +90,7 @@ macro_rules! component {
 			/// 
 			/// ## Safety
 			/// The input data must be syntactically correct.
+			#[inline]
 			pub unsafe fn parse_copy_unchecked<'a, T: AsRef<[u8]> + ?Sized>(bytes: &'a T) -> $id<Vec<u8>> {
 				let bytes = bytes.as_ref();
 				let mut buffer = Vec::new();
@@ -495,29 +235,6 @@ macro_rules! component {
 	};
 }
 
-component! {
-	/// Script subtag.
-	/// 
-	/// Script subtags are used to indicate the script or writing system
-	/// variations that distinguish the written forms of a language or its
-	/// dialects.
-	script, false, Script, InvalidScript
-}
-
-component! {
-	/// Region subtag.
-	/// 
-	/// Region subtags are used to indicate linguistic variations associated
-	/// with or appropriate to a specific country, territory, or region.
-	/// Typically, a region subtag is used to indicate variations such as
-	/// regional dialects or usage, or region-specific spelling conventions.
-	/// It can also be used to indicate that content is expressed in a way
-	/// that is appropriate for use throughout a region, for instance,
-	/// Spanish content tailored to be useful throughout Latin America.
-	region, false, Region, InvalidRegion
-}
-
-#[macro_export]
 macro_rules! iterator {
 	($collection:ident, $id:ident, $item:ident, $offset:literal) => {
 		pub struct $id<'a> {
@@ -638,6 +355,329 @@ macro_rules! iterator {
 			}
 		}
 	};
+}
+
+mod error;
+mod parse;
+mod langtag;
+mod privateuse;
+mod grandfathered;
+mod variant;
+mod language;
+mod extension;
+
+pub use error::*;
+pub use self::langtag::*;
+pub use privateuse::*;
+pub use grandfathered::*;
+pub use extension::*;
+pub use language::*;
+pub use variant::*;
+
+/// Language tag with borrowed data.
+pub enum LanguageTag<'a, T: ?Sized = [u8]> {
+	/// Normal language tag.
+	Normal(LangTag<&'a T>),
+
+	/// Private use tag.
+	PrivateUse(&'a PrivateUseTag<T>),
+
+	/// Grandfathered tag.
+	Grandfathered(GrandfatheredTag)
+}
+
+/// Language tag with owned data.
+pub enum LanguageTagBuf<T = Vec<u8>> {
+	/// Normal language tag.
+	Normal(LangTag<T>),
+
+	/// Private use tag.
+	PrivateUse(PrivateUseTag<T>),
+
+	/// Grandfathered tag.
+	Grandfathered(GrandfatheredTag)
+}
+
+impl<T: AsRef<[u8]>> LanguageTagBuf<T> {
+	/// Create a new language tag parsing and using the given data.
+	#[inline]
+	pub fn new(t: T) -> Result<LanguageTagBuf<T>, Error> {
+		match GrandfatheredTag::new(t) {
+			Ok(tag) => Ok(LanguageTagBuf::Grandfathered(tag)),
+			Err(t) => match PrivateUseTag::new(t) {
+				Ok(tag) => Ok(LanguageTagBuf::PrivateUse(tag)),
+				Err(t) => {
+					Ok(LanguageTagBuf::Normal(LangTag::new(t)?))
+				}
+			}
+		}
+	}
+}
+
+impl LanguageTagBuf {
+	/// reate a new language tag owning its data by parsing and copying the given data.
+	#[inline]
+	pub fn parse_copy<T: AsRef<[u8]> + ?Sized>(t: &T) -> Result<LanguageTagBuf, Error> {
+		let bytes = t.as_ref();
+		let mut buffer = Vec::new();
+		buffer.resize(bytes.len(), 0);
+		buffer.copy_from_slice(bytes);
+		Self::new(buffer)
+	}
+}
+
+macro_rules! language_tag_impl {
+	() => {
+		/// Returns the bytes representation of the language tag.
+		#[inline]
+		pub fn as_bytes(&self) -> &[u8] {
+			match self {
+				Self::Normal(tag) => tag.as_bytes(),
+				Self::PrivateUse(tag) => tag.as_bytes(),
+				Self::Grandfathered(tag) => tag.as_bytes()
+			}
+		}
+	
+		/// Returns the string representation of the language tag.
+		#[inline]
+		pub fn as_str(&self) -> &str {
+			match self {
+				Self::Normal(tag) => tag.as_str(),
+				Self::PrivateUse(tag) => tag.as_str(),
+				Self::Grandfathered(tag) => tag.as_str()
+			}
+		}
+	
+		/// Checks if this is a normal language tag.
+		#[inline]
+		pub fn is_normal(&self) -> bool {
+			match self {
+				Self::Normal(_) => true,
+				_ => false
+			}
+		}
+	
+		/// Checks if this is a private use tag.
+		#[inline]
+		pub fn is_private_use(&self) -> bool {
+			match self {
+				Self::PrivateUse(_) => true,
+				_ => false
+			}
+		}
+	
+		/// Checks if this is a grandfathered tag.
+		#[inline]
+		pub fn is_grandfathered(&self) -> bool {
+			match self {
+				Self::Grandfathered(_) => true,
+				_ => false
+			}
+		}
+	
+		/// Get the language subtags, if any.
+		/// 
+		/// Only normal language tags and regular grandfathered tags have language subtags.
+		#[inline]
+		pub fn language(&self) -> Option<&Language> {
+			match self {
+				Self::Normal(tag) => Some(tag.language()),
+				Self::PrivateUse(_) => None,
+				Self::Grandfathered(tag) => tag.language()
+			}
+		}
+	
+		/// Get the script subtag, if any.
+		#[inline]
+		pub fn script(&self) -> Option<&Script> {
+			match self {
+				Self::Normal(tag) => tag.script(),
+				Self::PrivateUse(_) => None,
+				Self::Grandfathered(_) => None
+			}
+		}
+	
+		/// Get the region subtag, if any.
+		#[inline]
+		pub fn region(&self) -> Option<&Region> {
+			match self {
+				Self::Normal(tag) => tag.region(),
+				Self::PrivateUse(_) => None,
+				Self::Grandfathered(_) => None
+			}
+		}
+	
+		/// Get the variant subtags.
+		#[inline]
+		pub fn variants(&self) -> &Variants {
+			match self {
+				Self::Normal(tag) => tag.variants(),
+				Self::PrivateUse(_) => Variants::empty(),
+				Self::Grandfathered(_) => Variants::empty()
+			}
+		}
+	
+		/// Get the extension subtags.
+		#[inline]
+		pub fn extensions(&self) -> &Extensions {
+			match self {
+				Self::Normal(tag) => tag.extensions(),
+				Self::PrivateUse(_) => Extensions::empty(),
+				Self::Grandfathered(_) => Extensions::empty()
+			}
+		}
+	
+		/// Get the private use subtags.
+		#[inline]
+		pub fn private_use_subtags(&self) -> &PrivateUseSubtags {
+			match self {
+				Self::Normal(tag) => tag.private_use_subtags(),
+				Self::PrivateUse(tag) => (*tag).subtags(),
+				Self::Grandfathered(_) => PrivateUseSubtags::empty()
+			}
+		}
+	}
+}
+
+impl <'a, T: AsRef<[u8]> + ?Sized> LanguageTag<'a, T> {
+	language_tag_impl!();
+}
+
+impl <T: AsRef<[u8]>> LanguageTagBuf<T> {
+	language_tag_impl!();
+}
+
+impl<'a> LanguageTag<'a> {
+	/// Create a new language tag by parsing and borrowing the given data.
+	#[inline]
+	pub fn parse<T: AsRef<[u8]> + ?Sized>(t: &'a T) -> Result<LanguageTag<'a>, Error> {
+		match GrandfatheredTag::new(t) {
+			Ok(tag) => Ok(LanguageTag::Grandfathered(tag)),
+			Err(_) => match PrivateUseTag::parse(t) {
+				Ok(tag) => Ok(LanguageTag::PrivateUse(tag)),
+				Err(_) => {
+					Ok(LanguageTag::Normal(LangTag::parse(t)?))
+				}
+			}
+		}
+	}
+}
+
+impl<'a, T: AsRef<[u8]> + ?Sized> AsRef<[u8]> for LanguageTag<'a, T> {
+	#[inline]
+	fn as_ref(&self) -> &[u8] {
+		self.as_bytes()
+	}
+}
+
+impl<'a, T: AsRef<[u8]> + ?Sized> AsRef<str> for LanguageTag<'a, T> {
+	#[inline]
+	fn as_ref(&self) -> &str {
+		self.as_str()
+	}
+}
+
+impl<'a, T: AsRef<[u8]> + ?Sized, U: AsRef<[u8]> + ?Sized> PartialEq<U> for LanguageTag<'a, T> {
+	#[inline]
+	fn eq(&self, other: &U) -> bool {
+		case_insensitive_eq(self.as_bytes(), other.as_ref())
+	}
+}
+
+impl<'a, T: AsRef<[u8]> + ?Sized> Eq for LanguageTag<'a, T> { }
+
+impl<'a, T: AsRef<[u8]> + ?Sized> fmt::Display for LanguageTag<'a, T> {
+	#[inline]
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		fmt::Display::fmt(self.as_str(), f)
+	}
+}
+
+impl<'a, T: AsRef<[u8]> + ?Sized> fmt::Debug for LanguageTag<'a, T> {
+	#[inline]
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		fmt::Debug::fmt(self.as_str(), f)
+	}
+}
+
+pub type LangTagBuf = LangTag<Vec<u8>>;
+pub type PrivateUseTagBuf = PrivateUseTag<Vec<u8>>;
+
+#[inline]
+pub(crate) fn into_smallcase(c: u8) -> u8 {
+	if c >= b'A' && c <= b'Z' {
+		c + 0x20
+	} else {
+		c
+	}
+}
+
+#[inline]
+pub(crate) fn case_insensitive_eq(a: &[u8], b: &[u8]) -> bool {
+	if a.len() == b.len() {
+		for i in 0..a.len() {
+			if into_smallcase(a[i]) != into_smallcase(b[i]) {
+				return false
+			}
+		}
+
+		true
+	} else {
+		false
+	}
+}
+
+#[inline]
+pub(crate) fn case_insensitive_hash<H: Hasher>(bytes: &[u8], hasher: &mut H) {
+	for b in bytes {
+		into_smallcase(*b).hash(hasher)
+	}
+}
+
+#[inline]
+pub(crate) fn case_insensitive_cmp(a: &[u8], b: &[u8]) -> Ordering {
+	let mut i = 0;
+
+	loop {
+		if a.len() <= i {
+			if b.len() <= i {
+				return Ordering::Equal
+			}
+
+			return Ordering::Greater
+		} else if b.len() <= i {
+			return Ordering::Less
+		} else {
+			match into_smallcase(a[i]).cmp(&into_smallcase(b[i])) {
+				Ordering::Equal => {
+					i += 1
+				},
+				ord => return ord
+			}
+		}
+	}
+}
+
+component! {
+	/// Script subtag.
+	/// 
+	/// Script subtags are used to indicate the script or writing system
+	/// variations that distinguish the written forms of a language or its
+	/// dialects.
+	script, false, Script, InvalidScript
+}
+
+component! {
+	/// Region subtag.
+	/// 
+	/// Region subtags are used to indicate linguistic variations associated
+	/// with or appropriate to a specific country, territory, or region.
+	/// Typically, a region subtag is used to indicate variations such as
+	/// regional dialects or usage, or region-specific spelling conventions.
+	/// It can also be used to indicate that content is expressed in a way
+	/// that is appropriate for use throughout a region, for instance,
+	/// Spanish content tailored to be useful throughout Latin America.
+	region, false, Region, InvalidRegion
 }
 
 /// Replacement function.

@@ -8,11 +8,7 @@ use std::{
 	ops::Deref,
 	cmp::Ordering
 };
-use crate::{
-	Error,
-	component,
-	iterator
-};
+use crate::Error;
 
 component! {
 	/// List of private use subtags.
@@ -33,6 +29,7 @@ component! {
 
 iterator!(PrivateUseSubtags, PrivateUseSubtagsIter, PrivateUseSubtag, 2);
 
+/// Mutable reference to private use subtags.
 pub struct PrivateUseSubtagsMut<'a> {
 	/// Language tag buffer.
 	pub(crate) buffer: &'a mut Vec<u8>,
@@ -56,6 +53,7 @@ impl<'a> PrivateUseSubtagsMut<'a> {
 		}
 	}
 
+	/// Returns a non-mutable reference to the private use subtags.
 	#[inline]
 	pub fn as_ref(&self) -> &PrivateUseSubtags {
 		let i = self.component_offset();
@@ -69,6 +67,7 @@ impl<'a> PrivateUseSubtagsMut<'a> {
 		}
 	}
 
+	/// Checks if the subtag list is empty.
 	#[inline]
 	pub fn is_empty(&self) -> bool {
 		self.as_ref().is_empty()
@@ -155,11 +154,13 @@ impl<'a> PrivateUseSubtagsMut<'a> {
 	}
 }
 
+/// Private use tag.
 pub struct PrivateUseTag<T: ?Sized = [u8]> {
 	data: T
 }
 
 impl<T: AsRef<[u8]>> PrivateUseTag<T> {
+	/// Parse and use the given data as a private use tag.
 	#[inline]
 	pub fn new(t: T) -> Result<PrivateUseTag<T>, T> {
 		let bytes = t.as_ref();
@@ -174,6 +175,8 @@ impl<T: AsRef<[u8]>> PrivateUseTag<T> {
 }
 
 impl PrivateUseTag {
+	/// Parse and borrow the given data as a private use tag.
+	#[inline]
 	pub fn parse<'a, T: AsRef<[u8]> + ?Sized>(bytes: &T) -> Result<&'a PrivateUseTag, Error> {
 		let bytes = bytes.as_ref();
 		if bytes.len() > 0 && crate::parse::privateuse(bytes, 0) == bytes.len() {
@@ -187,11 +190,13 @@ impl PrivateUseTag {
 }
 
 impl<T: AsRef<[u8]> + ?Sized> PrivateUseTag<T> {
+	/// Returns the bytes representation of this private use tag.
 	#[inline]
 	pub fn as_bytes(&self) -> &[u8] {
 		self.data.as_ref()
 	}
 
+	/// Returns the string representation of this private use tag.
 	#[inline]
 	pub fn as_str(&self) -> &str {
 		unsafe {
@@ -199,6 +204,7 @@ impl<T: AsRef<[u8]> + ?Sized> PrivateUseTag<T> {
 		}
 	}
 
+	/// Iterate through the subtags.
 	#[inline]
 	pub fn subtags(&self) -> &PrivateUseSubtags {
 		unsafe {
@@ -208,6 +214,7 @@ impl<T: AsRef<[u8]> + ?Sized> PrivateUseTag<T> {
 }
 
 impl<T: AsMut<Vec<u8>>> PrivateUseTag<T> {
+	/// Modify the subtags.
 	#[inline]
 	pub fn subtags_mut(&mut self) -> PrivateUseSubtagsMut {
 		PrivateUseSubtagsMut {
@@ -241,12 +248,14 @@ impl<T: AsRef<[u8]> + ?Sized> Hash for PrivateUseTag<T> {
 }
 
 impl<T: AsRef<[u8]> + ?Sized> fmt::Display for PrivateUseTag<T> {
+	#[inline]
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 		fmt::Display::fmt(self.as_str(), f)
 	}
 }
 
 impl<T: AsRef<[u8]> + ?Sized> fmt::Debug for PrivateUseTag<T> {
+	#[inline]
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 		fmt::Debug::fmt(self.as_str(), f)
 	}
