@@ -176,6 +176,17 @@ impl<T: AsRef<[u8]>> PrivateUseTag<T> {
 			Err(t)
 		}
 	}
+
+	/// Use the given data as a private use tag without checking it.
+	/// 
+	/// ## Safety
+	/// The given data must be a valid private use tag.
+	#[inline]
+	pub unsafe fn new_unchecked(t: T) -> PrivateUseTag<T> {
+		PrivateUseTag {
+			data: t
+		}
+	}
 }
 
 impl PrivateUseTag {
@@ -190,6 +201,16 @@ impl PrivateUseTag {
 		} else {
 			Err(Error::InvalidPrivateUseSubtags)
 		}
+	}
+
+	/// Borrow the given data as a private use tag without checking it.
+	/// 
+	/// ## Safety
+	/// The given data must be a valid private use tag.
+	#[inline]
+	pub unsafe fn parse_unchecked<'a, T: AsRef<[u8]>>(bytes: &T) -> &'a PrivateUseTag {
+		let bytes = bytes.as_ref();
+		&*(bytes as *const [u8] as *const PrivateUseTag)
 	}
 }
 

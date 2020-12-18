@@ -461,13 +461,13 @@ impl<T: AsRef<[u8]>> LanguageTagBuf<T> {
 
 	/// Returns a [`LanguageTag`] referencing this tag.
 	#[inline]
-	pub fn as_ref(&self) -> LanguageTag<T> {
+	pub fn as_ref(&self) -> LanguageTag {
 		match self {
 			LanguageTagBuf::Normal(tag) => unsafe {
-				LanguageTag::Normal(LangTag::from_raw_parts(tag.inner(), tag.parsing_data()))
+				LanguageTag::Normal(LangTag::from_raw_parts(tag.as_bytes(), tag.parsing_data()))
 			},
-			LanguageTagBuf::PrivateUse(tag) => {
-				LanguageTag::PrivateUse(tag)
+			LanguageTagBuf::PrivateUse(tag) => unsafe {
+				LanguageTag::PrivateUse(PrivateUseTag::parse_unchecked(tag))
 			},
 			LanguageTagBuf::Grandfathered(tag) => {
 				LanguageTag::Grandfathered(*tag)
