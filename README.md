@@ -31,8 +31,8 @@ You can create an owning `LanguageTag` instance by using
 
 Once parsed, you can exlore every component of the language tag using the provided functions.
 
-[1] https://docs.rs/langtag/latest/langtag/enum.LanguageTag.html#method.parse
-[2] https://docs.rs/langtag/latest/langtag/enum.LanguageTagBuf.html#method.parse_copy
+[1]: https://docs.rs/langtag/latest/langtag/enum.LanguageTag.html#method.parse
+[2]: https://docs.rs/langtag/latest/langtag/enum.LanguageTagBuf.html#method.parse_copy
 
 ### Mutable language tags
 
