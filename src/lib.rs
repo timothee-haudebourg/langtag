@@ -605,10 +605,6 @@ impl <'a, T: AsRef<[u8]> + ?Sized> LanguageTag<'a, T> {
 	language_tag_impl!();
 }
 
-impl <T: AsRef<[u8]>> LanguageTagBuf<T> {
-	language_tag_impl!();
-}
-
 impl<'a> LanguageTag<'a> {
 	/// Create a new language tag by parsing and borrowing the given data.
 	#[inline]
@@ -648,6 +644,24 @@ impl<'a, T: AsRef<[u8]> + ?Sized, U: AsRef<[u8]> + ?Sized> PartialEq<U> for Lang
 
 impl<'a, T: AsRef<[u8]> + ?Sized> Eq for LanguageTag<'a, T> { }
 
+impl<'a, T: AsRef<[u8]> + ?Sized> Hash for LanguageTag<'a, T> {
+	fn hash<H: Hasher>(&self, h: &mut H) {
+		case_insensitive_hash(self.as_bytes(), h)
+	}
+}
+
+impl<'a, T: AsRef<[u8]> + ?Sized, U: AsRef<[u8]>> PartialOrd<U> for LanguageTag<'a, T> {
+	fn partial_cmp(&self, other: &U) -> Option<Ordering> {
+		Some(case_insensitive_cmp(self.as_bytes(), other.as_ref()))
+	}
+}
+
+impl<'a, T: AsRef<[u8]> + ?Sized> Ord for LanguageTag<'a, T> {
+	fn cmp(&self, other: &Self) -> Ordering {
+		case_insensitive_cmp(self.as_bytes(), other.as_bytes())
+	}
+}
+
 impl<'a, T: AsRef<[u8]> + ?Sized> fmt::Display for LanguageTag<'a, T> {
 	#[inline]
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -656,6 +670,65 @@ impl<'a, T: AsRef<[u8]> + ?Sized> fmt::Display for LanguageTag<'a, T> {
 }
 
 impl<'a, T: AsRef<[u8]> + ?Sized> fmt::Debug for LanguageTag<'a, T> {
+	#[inline]
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		fmt::Debug::fmt(self.as_str(), f)
+	}
+}
+
+impl <T: AsRef<[u8]>> LanguageTagBuf<T> {
+	language_tag_impl!();
+}
+
+impl<T: AsRef<[u8]>> AsRef<[u8]> for LanguageTagBuf<T> {
+	#[inline]
+	fn as_ref(&self) -> &[u8] {
+		self.as_bytes()
+	}
+}
+
+impl<T: AsRef<[u8]>> AsRef<str> for LanguageTagBuf<T> {
+	#[inline]
+	fn as_ref(&self) -> &str {
+		self.as_str()
+	}
+}
+
+impl<T: AsRef<[u8]>, U: AsRef<[u8]> + ?Sized> PartialEq<U> for LanguageTagBuf<T> {
+	#[inline]
+	fn eq(&self, other: &U) -> bool {
+		case_insensitive_eq(self.as_bytes(), other.as_ref())
+	}
+}
+
+impl<T: AsRef<[u8]>> Eq for LanguageTagBuf<T> { }
+
+impl<T: AsRef<[u8]>> Hash for LanguageTagBuf<T> {
+	fn hash<H: Hasher>(&self, h: &mut H) {
+		case_insensitive_hash(self.as_bytes(), h)
+	}
+}
+
+impl<T: AsRef<[u8]>, U: AsRef<[u8]>> PartialOrd<U> for LanguageTagBuf<T> {
+	fn partial_cmp(&self, other: &U) -> Option<Ordering> {
+		Some(case_insensitive_cmp(self.as_bytes(), other.as_ref()))
+	}
+}
+
+impl<T: AsRef<[u8]>> Ord for LanguageTagBuf<T> {
+	fn cmp(&self, other: &Self) -> Ordering {
+		case_insensitive_cmp(self.as_bytes(), other.as_bytes())
+	}
+}
+
+impl<T: AsRef<[u8]>> fmt::Display for LanguageTagBuf<T> {
+	#[inline]
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		fmt::Display::fmt(self.as_str(), f)
+	}
+}
+
+impl<T: AsRef<[u8]>> fmt::Debug for LanguageTagBuf<T> {
 	#[inline]
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 		fmt::Debug::fmt(self.as_str(), f)
