@@ -419,6 +419,7 @@ pub use language::*;
 pub use variant::*;
 
 /// Language tag with borrowed data.
+#[derive(Clone)]
 pub enum LanguageTag<'a, T: ?Sized = [u8]> {
 	/// Normal language tag.
 	Normal(LangTag<&'a T>),
@@ -431,6 +432,7 @@ pub enum LanguageTag<'a, T: ?Sized = [u8]> {
 }
 
 /// Language tag with owned data.
+#[derive(Clone)]
 pub enum LanguageTagBuf<T = Vec<u8>> {
 	/// Normal language tag.
 	Normal(LangTag<T>),

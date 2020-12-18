@@ -158,6 +158,7 @@ impl<'a> PrivateUseSubtagsMut<'a> {
 }
 
 /// Private use tag.
+#[derive(Clone)]
 pub struct PrivateUseTag<T: ?Sized = [u8]> {
 	data: T
 }
