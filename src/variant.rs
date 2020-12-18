@@ -30,7 +30,10 @@ component! {
 	variants, true, Variants, InvalidVariants
 }
 
-iterator!(Variants, VariantsIter, Variant, 0);
+iterator! {
+	/// Variant subtags iterator.
+	Variants, VariantsIter, Variant, 0
+}
 
 /// Mutable reference to the variants of a language tag.
 pub struct VariantsMut<'a> {

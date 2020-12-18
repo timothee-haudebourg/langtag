@@ -27,7 +27,10 @@ component! {
 	privateuse_subtag, false, PrivateUseSubtag, InvalidPrivateUseSubtag
 }
 
-iterator!(PrivateUseSubtags, PrivateUseSubtagsIter, PrivateUseSubtag, 2);
+iterator! {
+	/// Private use subtags iterator.
+	PrivateUseSubtags, PrivateUseSubtagsIter, PrivateUseSubtag, 2
+}
 
 /// Mutable reference to private use subtags.
 pub struct PrivateUseSubtagsMut<'a> {

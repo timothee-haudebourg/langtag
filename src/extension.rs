@@ -13,6 +13,7 @@ use crate::{
 	Error
 };
 
+/// Extension identifier.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Singleton(u8);
 
@@ -99,7 +100,7 @@ component! {
 }
 
 component! {
-	/// List of extension subtags.
+	/// List of extensions.
 	/// 
 	/// A list of language tag extension, separated by a `-` character.
 	/// Individual extensions are represented by the [`Extension`] type,
@@ -108,7 +109,10 @@ component! {
 	extensions, true, Extensions, InvalidExtensions
 }
 
-iterator!(Extension, ExtensionIter, ExtensionSubtag, 2);
+iterator! {
+	/// Extension subtags iterator.
+	Extension, ExtensionIter, ExtensionSubtag, 2
+}
 
 impl Extension {
 	/// Return the singletong identifying the extension.

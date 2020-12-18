@@ -236,7 +236,8 @@ macro_rules! component {
 }
 
 macro_rules! iterator {
-	($collection:ident, $id:ident, $item:ident, $offset:literal) => {
+	($(#[ doc = $doc:tt ])* $collection:ident, $id:ident, $item:ident, $offset:literal) => {
+		$(#[doc = $doc])*
 		pub struct $id<'a> {
 			bytes: &'a [u8],
 			i: usize
@@ -600,7 +601,14 @@ impl<'a, T: AsRef<[u8]> + ?Sized> fmt::Debug for LanguageTag<'a, T> {
 	}
 }
 
+/// Normal language tag owning its data using [`Vec<u8>`].
+/// 
+/// Such language tag provides additional functions to modify the tag and its subtags.
 pub type LangTagBuf = LangTag<Vec<u8>>;
+
+/// Private use tag owning its data using [`Vec<u8>`].
+/// 
+/// Such private use tag provides additional functions to modify its subtags.
 pub type PrivateUseTagBuf = PrivateUseTag<Vec<u8>>;
 
 #[inline]

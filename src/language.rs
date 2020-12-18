@@ -63,7 +63,10 @@ impl<T: AsRef<[u8]> + ?Sized> LanguageExtension<T> {
 	}
 }
 
-iterator!(LanguageExtension, LanguageExtensionIter, ExtendedLangTag, 0);
+iterator! {
+	/// Language extension subtags iterator.
+	LanguageExtension, LanguageExtensionIter, ExtendedLangTag, 0
+}
 
 impl Language {
 	/// Return the length (in bytes) of the primary subtag.
