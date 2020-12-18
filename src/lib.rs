@@ -619,6 +619,25 @@ impl<'a> LanguageTag<'a> {
 			}
 		}
 	}
+
+	#[inline]
+	pub fn cloned(&self) -> LanguageTagBuf {
+		match self {
+			LanguageTag::Normal(tag) => unsafe {
+				let mut buffer = Vec::new();
+				buffer.extend_from_slice(tag.as_bytes());
+				LanguageTagBuf::Normal(LangTag::from_raw_parts(buffer, tag.parsing_data()))
+			},
+			LanguageTag::PrivateUse(tag) => unsafe {
+				let mut buffer = Vec::new();
+				buffer.extend_from_slice(tag.as_bytes());
+				LanguageTagBuf::PrivateUse(PrivateUseTag::new_unchecked(buffer))
+			},
+			LanguageTag::Grandfathered(tag) => {
+				LanguageTagBuf::Grandfathered(*tag)
+			}
+		}
+	}
 }
 
 impl<'a, T: AsRef<[u8]> + ?Sized> AsRef<[u8]> for LanguageTag<'a, T> {
