@@ -6,6 +6,7 @@ use std::{
 	}
 };
 use crate::{
+	parse,
 	Error,
 	Language,
 	LanguageMut,
@@ -23,7 +24,7 @@ use crate::{
 /// 
 /// The language subtag can be modified when the internal buffer type (`T`) is `Vec<u8>`.
 pub struct LangTag<T> {
-	p: crate::parse::ParsedLangTag,
+	p: parse::ParsedLangTag,
 	data: T
 }
 
@@ -32,7 +33,7 @@ impl<'a> LangTag<&'a [u8]> {
 	#[inline]
 	pub fn parse<T: AsRef<[u8]> + ?Sized>(bytes: &'a T) -> Result<LangTag<&'a [u8]>, Error> {
 		let bytes = bytes.as_ref();
-		let p = crate::parse::langtag(bytes, 0)?;
+		let p = parse::langtag(bytes, 0)?;
 
 		if p.len() > 0 && p.len() == bytes.len() {
 			Ok(LangTag {
@@ -64,7 +65,7 @@ impl<T: AsRef<[u8]>> LangTag<T> {
 	#[inline]
 	pub fn new(data: T) -> Result<LangTag<T>, Error> {
 		let bytes = data.as_ref();
-		let p = crate::parse::langtag(bytes, 0)?;
+		let p = parse::langtag(bytes, 0)?;
 
 		if p.len() > 0 && p.len() == bytes.len() {
 			Ok(LangTag {
@@ -74,6 +75,36 @@ impl<T: AsRef<[u8]>> LangTag<T> {
 		} else {
 			Err(Error::InvalidLangTag)
 		}
+	}
+
+	/// Consume the tag and returns its internal buffer along with the parsing metadata.
+	#[inline]
+	pub fn into_raw_parts(self) -> (T, parse::ParsedLangTag) {
+		(self.data, self.p)
+	}
+
+	/// Create a new normal language tag using `p` as parsing metadata.
+	/// 
+	/// ## Safety
+	/// The input data is not checked for well-formedness, which must be ensred by the caller.
+	#[inline]
+	pub unsafe fn from_raw_parts(data: T, p: parse::ParsedLangTag) -> LangTag<T> {
+		LangTag {
+			p,
+			data
+		}
+	}
+
+	/// Returns a reference to the tag's buffer.
+	#[inline]
+	pub fn inner(&self) -> &T {
+		&self.data
+	}
+
+	/// Returns a copy of the parsing metadata.
+	#[inline]
+	pub fn parsing_data(&self) -> parse::ParsedLangTag {
+		self.p
 	}
 
 	/// Returns the bytes representation of the tag.
