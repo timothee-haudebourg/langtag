@@ -1,5 +1,5 @@
-use std::convert::TryInto;
 use langtag::LangTag;
+use std::convert::TryInto;
 
 #[test]
 pub fn langtag_set_script() {

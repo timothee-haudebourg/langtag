@@ -1,21 +1,15 @@
+use crate::{parse, Error};
 use std::{
 	cmp::Ordering,
-	ops::Deref,
-	hash::{
-		Hash,
-		Hasher
-	},
+	convert::TryFrom,
 	fmt,
-	convert::TryFrom
-};
-use crate::{
-	parse,
-	Error
+	hash::{Hash, Hasher},
+	ops::Deref,
 };
 
 component! {
 	/// Single variant subtag.
-	/// 
+	///
 	/// Variant subtags are used to indicate additional, well-recognized
 	/// variations that define a language or its dialects that are not
 	/// covered by other available subtags.
@@ -24,7 +18,7 @@ component! {
 
 component! {
 	/// List of variant subtags.
-	/// 
+	///
 	/// Represents a list of variant subtags separated by a `-` character
 	/// as found in a language tag.
 	variants, true, Variants, InvalidVariants
@@ -41,14 +35,14 @@ pub struct VariantsMut<'a> {
 	pub(crate) buffer: &'a mut Vec<u8>,
 
 	/// Language tag parsing data.
-	pub(crate) p: &'a mut parse::ParsedLangTag
+	pub(crate) p: &'a mut parse::ParsedLangTag,
 }
 
 impl<'a> VariantsMut<'a> {
 	/// Checks if the list of variants is empty.
 	#[inline]
 	pub fn is_empty(&self) -> bool {
-		self.p.variant_end <= self.p.region_end+1
+		self.p.variant_end <= self.p.region_end + 1
 	}
 
 	/// Returns the first variant subtag of the list (if any).
@@ -57,14 +51,16 @@ impl<'a> VariantsMut<'a> {
 		if self.is_empty() {
 			None
 		} else {
-			let mut i = self.p.region_end+1;
+			let mut i = self.p.region_end + 1;
 
 			while i < self.p.variant_end && self.buffer[i] != b'-' {
 				i += 1
 			}
 
 			unsafe {
-				Some(Variant::parse_unchecked(&self.buffer[self.p.region_end+1..i]))
+				Some(Variant::parse_unchecked(
+					&self.buffer[self.p.region_end + 1..i],
+				))
 			}
 		}
 	}
@@ -75,14 +71,16 @@ impl<'a> VariantsMut<'a> {
 		if self.is_empty() {
 			None
 		} else {
-			let mut i = self.p.variant_end-1;
+			let mut i = self.p.variant_end - 1;
 
-			while i > self.p.region_end+2 && self.buffer[i-1] != b'-' {
+			while i > self.p.region_end + 2 && self.buffer[i - 1] != b'-' {
 				i -= 1
 			}
 
 			unsafe {
-				Some(Variant::parse_unchecked(&self.buffer[i..self.p.variant_end]))
+				Some(Variant::parse_unchecked(
+					&self.buffer[i..self.p.variant_end],
+				))
 			}
 		}
 	}
@@ -126,8 +124,8 @@ impl<'a> VariantsMut<'a> {
 				self.p.privateuse_end -= len;
 
 				Some(copy)
-			},
-			None => None
+			}
+			None => None,
 		}
 	}
 }
