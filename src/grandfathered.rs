@@ -1,5 +1,6 @@
 use crate::{Error, Language};
 use std::convert::TryFrom;
+use std::fmt;
 
 /// Grandfathered tags.
 ///
@@ -137,5 +138,11 @@ impl<'a> TryFrom<&'a [u8]> for GrandfatheredTag {
 		}
 
 		Err(Error::InvalidGrandfatheredTag)
+	}
+}
+
+impl fmt::Display for GrandfatheredTag {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		self.as_str().fmt(f)
 	}
 }
