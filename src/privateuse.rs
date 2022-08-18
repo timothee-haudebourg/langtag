@@ -186,6 +186,18 @@ impl<T: AsRef<[u8]>> PrivateUseTag<T> {
 	pub unsafe fn new_unchecked(t: T) -> PrivateUseTag<T> {
 		PrivateUseTag { data: t }
 	}
+
+	/// Returns a reference to the tag's buffer.
+	#[inline]
+	pub fn as_inner(&self) -> &T {
+		&self.data
+	}
+
+	/// Consumes the tag and returns its underlying buffer.
+	#[inline]
+	pub fn into_inner(self) -> T {
+		self.data
+	}
 }
 
 impl PrivateUseTag {

@@ -83,6 +83,12 @@ impl<T: AsRef<[u8]>> LangTag<T> {
 		&self.data
 	}
 
+	/// Consumes the tag and returns its underlying buffer.
+	#[inline]
+	pub fn into_inner(self) -> T {
+		self.data
+	}
+
 	/// Returns a copy of the parsing metadata.
 	#[inline]
 	pub fn parsing_data(&self) -> parse::ParsedLangTag {
