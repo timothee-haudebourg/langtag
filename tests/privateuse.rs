@@ -1,5 +1,5 @@
-use std::convert::TryInto;
 use langtag::LanguageTag;
+use std::convert::TryInto;
 
 #[test]
 pub fn privateuse_eq() {

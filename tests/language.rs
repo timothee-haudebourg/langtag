@@ -1,5 +1,5 @@
-use std::convert::TryInto;
 use langtag::LanguageTag;
+use std::convert::TryInto;
 
 #[test]
 pub fn language_eq() {
@@ -40,7 +40,13 @@ pub fn language_ext_eq() {
 #[test]
 pub fn language_ext_mut_insert() {
 	let mut tag = langtag::LangTag::parse_copy("fr-abc-bz").unwrap();
-	assert_eq!(tag.language_mut().extension_mut().unwrap().insert("def".try_into().unwrap()), true);
+	assert_eq!(
+		tag.language_mut()
+			.extension_mut()
+			.unwrap()
+			.insert("def".try_into().unwrap()),
+		true
+	);
 	assert_eq!(tag, "fr-abc-def-bz");
 	assert_eq!(tag.region().unwrap(), "bz");
 }
@@ -48,7 +54,10 @@ pub fn language_ext_mut_insert() {
 #[test]
 pub fn language_ext_mut_remove() {
 	let mut tag = langtag::LangTag::parse_copy("fr-abc-def-ghi-bz").unwrap();
-	assert_eq!(tag.language_mut().extension_mut().unwrap().remove("def"), true);
+	assert_eq!(
+		tag.language_mut().extension_mut().unwrap().remove("def"),
+		true
+	);
 	assert_eq!(tag, "fr-abc-ghi-bz");
 	assert_eq!(tag.region().unwrap(), "bz");
 }

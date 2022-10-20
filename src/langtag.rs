@@ -1,32 +1,19 @@
+use crate::{
+	parse, Error, Extensions, ExtensionsMut, Language, LanguageMut, PrivateUseSubtags,
+	PrivateUseSubtagsMut, Region, Script, Variants, VariantsMut,
+};
 use std::{
 	fmt,
-	hash::{
-		Hash,
-		Hasher
-	}
-};
-use crate::{
-	parse,
-	Error,
-	Language,
-	LanguageMut,
-	Script,
-	Region,
-	Variants,
-	VariantsMut,
-	Extensions,
-	ExtensionsMut,
-	PrivateUseSubtags,
-	PrivateUseSubtagsMut
+	hash::{Hash, Hasher},
 };
 
 /// Normal language subtag.
-/// 
+///
 /// The language subtag can be modified when the internal buffer type (`T`) is `Vec<u8>`.
 #[derive(Clone, Copy)]
 pub struct LangTag<T> {
 	p: parse::ParsedLangTag,
-	data: T
+	data: T,
 }
 
 impl<'a> LangTag<&'a [u8]> {
@@ -37,10 +24,7 @@ impl<'a> LangTag<&'a [u8]> {
 		let p = parse::langtag(bytes, 0)?;
 
 		if p.len() > 0 && p.len() == bytes.len() {
-			Ok(LangTag {
-				p,
-				data: bytes
-			})
+			Ok(LangTag { p, data: bytes })
 		} else {
 			Err(Error::InvalidLangTag)
 		}
@@ -49,7 +33,7 @@ impl<'a> LangTag<&'a [u8]> {
 
 impl LangTag<Vec<u8>> {
 	/// Parse and copy a normal language tag.
-	/// 
+	///
 	/// The returned normal language tag owns its buffer.
 	#[inline]
 	pub fn parse_copy<T: AsRef<[u8]> + ?Sized>(bytes: &T) -> Result<LangTag<Vec<u8>>, Error> {
@@ -57,24 +41,24 @@ impl LangTag<Vec<u8>> {
 		let mut buffer = Vec::new();
 		buffer.resize(bytes.len(), 0);
 		buffer.copy_from_slice(bytes);
-		Self::new(buffer)
+		Self::new(buffer).map_err(|(e, _)| e)
 	}
 }
 
 impl<T: AsRef<[u8]>> LangTag<T> {
 	/// Create a new normal language tag by parsing and using the given buffer.
 	#[inline]
-	pub fn new(data: T) -> Result<LangTag<T>, Error> {
+	pub fn new(data: T) -> Result<LangTag<T>, (Error, T)> {
 		let bytes = data.as_ref();
-		let p = parse::langtag(bytes, 0)?;
-
-		if p.len() > 0 && p.len() == bytes.len() {
-			Ok(LangTag {
-				p,
-				data
-			})
-		} else {
-			Err(Error::InvalidLangTag)
+		match parse::langtag(bytes, 0) {
+			Ok(p) => {
+				if p.len() > 0 && p.len() == bytes.len() {
+					Ok(LangTag { p, data })
+				} else {
+					Err((Error::InvalidLangTag, data))
+				}
+			}
+			Err(e) => Err((e, data)),
 		}
 	}
 
@@ -85,21 +69,24 @@ impl<T: AsRef<[u8]>> LangTag<T> {
 	}
 
 	/// Create a new normal language tag using `p` as parsing metadata.
-	/// 
+	///
 	/// ## Safety
 	/// The input data is not checked for well-formedness, which must be ensred by the caller.
 	#[inline]
 	pub unsafe fn from_raw_parts(data: T, p: parse::ParsedLangTag) -> LangTag<T> {
-		LangTag {
-			p,
-			data
-		}
+		LangTag { p, data }
 	}
 
 	/// Returns a reference to the tag's buffer.
 	#[inline]
 	pub fn inner(&self) -> &T {
 		&self.data
+	}
+
+	/// Consumes the tag and returns its underlying buffer.
+	#[inline]
+	pub fn into_inner(self) -> T {
+		self.data
 	}
 
 	/// Returns a copy of the parsing metadata.
@@ -123,9 +110,7 @@ impl<T: AsRef<[u8]>> LangTag<T> {
 	/// Get the language subtags.
 	#[inline]
 	pub fn language(&self) -> &Language {
-		unsafe {
-			Language::parse_unchecked(&self.data.as_ref()[0..self.p.language_end])
-		}
+		unsafe { Language::parse_unchecked(&self.data.as_ref()[0..self.p.language_end]) }
 	}
 
 	/// Get the script subtag, if any.
@@ -133,7 +118,9 @@ impl<T: AsRef<[u8]>> LangTag<T> {
 	pub fn script(&self) -> Option<&Script> {
 		if self.p.language_end < self.p.script_end {
 			unsafe {
-				Some(Script::parse_unchecked(&self.data.as_ref()[(self.p.language_end+1)..self.p.script_end]))
+				Some(Script::parse_unchecked(
+					&self.data.as_ref()[(self.p.language_end + 1)..self.p.script_end],
+				))
 			}
 		} else {
 			None
@@ -145,7 +132,9 @@ impl<T: AsRef<[u8]>> LangTag<T> {
 	pub fn region(&self) -> Option<&Region> {
 		if self.p.script_end < self.p.region_end {
 			unsafe {
-				Some(Region::parse_unchecked(&self.data.as_ref()[(self.p.script_end+1)..self.p.region_end]))
+				Some(Region::parse_unchecked(
+					&self.data.as_ref()[(self.p.script_end + 1)..self.p.region_end],
+				))
 			}
 		} else {
 			None
@@ -156,7 +145,9 @@ impl<T: AsRef<[u8]>> LangTag<T> {
 	#[inline]
 	pub fn variants(&self) -> &Variants {
 		unsafe {
-			Variants::parse_unchecked(&self.data.as_ref()[(self.p.region_end+1)..self.p.variant_end])
+			Variants::parse_unchecked(
+				&self.data.as_ref()[(self.p.region_end + 1)..self.p.variant_end],
+			)
 		}
 	}
 
@@ -164,7 +155,9 @@ impl<T: AsRef<[u8]>> LangTag<T> {
 	#[inline]
 	pub fn extensions(&self) -> &Extensions {
 		unsafe {
-			Extensions::parse_unchecked(&self.data.as_ref()[(self.p.variant_end+1)..self.p.extension_end])
+			Extensions::parse_unchecked(
+				&self.data.as_ref()[(self.p.variant_end + 1)..self.p.extension_end],
+			)
 		}
 	}
 
@@ -172,7 +165,9 @@ impl<T: AsRef<[u8]>> LangTag<T> {
 	#[inline]
 	pub fn private_use_subtags(&self) -> &PrivateUseSubtags {
 		unsafe {
-			PrivateUseSubtags::parse_unchecked(&self.data.as_ref()[(self.p.extension_end+1)..self.p.privateuse_end])
+			PrivateUseSubtags::parse_unchecked(
+				&self.data.as_ref()[(self.p.extension_end + 1)..self.p.privateuse_end],
+			)
 		}
 	}
 }
@@ -183,7 +178,7 @@ impl<T: AsMut<Vec<u8>>> LangTag<T> {
 	pub fn language_mut(&mut self) -> LanguageMut {
 		LanguageMut {
 			buffer: self.data.as_mut(),
-			p: &mut self.p
+			p: &mut self.p,
 		}
 	}
 
@@ -217,12 +212,24 @@ impl<T: AsMut<Vec<u8>>> LangTag<T> {
 		let new_end = match script {
 			Some(script) => {
 				let script = script.as_bytes();
-				crate::replace(self.data.as_mut(), self.p.language_end..self.p.script_end, script);
-				crate::replace(self.data.as_mut(), self.p.language_end..self.p.language_end, &[b'-']);
+				crate::replace(
+					self.data.as_mut(),
+					self.p.language_end..self.p.script_end,
+					script,
+				);
+				crate::replace(
+					self.data.as_mut(),
+					self.p.language_end..self.p.language_end,
+					&[b'-'],
+				);
 				self.p.language_end + 1 + script.len()
-			},
+			}
 			None => {
-				crate::replace(self.data.as_mut(), self.p.language_end..self.p.script_end, &[]);
+				crate::replace(
+					self.data.as_mut(),
+					self.p.language_end..self.p.script_end,
+					&[],
+				);
 				self.p.language_end
 			}
 		};
@@ -249,12 +256,24 @@ impl<T: AsMut<Vec<u8>>> LangTag<T> {
 		let new_end = match region {
 			Some(region) => {
 				let region = region.as_bytes();
-				crate::replace(self.data.as_mut(), self.p.script_end..self.p.region_end, region);
-				crate::replace(self.data.as_mut(), self.p.script_end..self.p.script_end, &[b'-']);
+				crate::replace(
+					self.data.as_mut(),
+					self.p.script_end..self.p.region_end,
+					region,
+				);
+				crate::replace(
+					self.data.as_mut(),
+					self.p.script_end..self.p.script_end,
+					&[b'-'],
+				);
 				self.p.script_end + 1 + region.len()
-			},
+			}
 			None => {
-				crate::replace(self.data.as_mut(), self.p.script_end..self.p.region_end, &[]);
+				crate::replace(
+					self.data.as_mut(),
+					self.p.script_end..self.p.region_end,
+					&[],
+				);
 				self.p.script_end
 			}
 		};
@@ -265,7 +284,7 @@ impl<T: AsMut<Vec<u8>>> LangTag<T> {
 			self.p.extension_end += diff;
 			self.p.privateuse_end += diff;
 		} else {
-			let diff = self.p.region_end - new_end;	
+			let diff = self.p.region_end - new_end;
 			self.p.variant_end -= diff;
 			self.p.extension_end -= diff;
 			self.p.privateuse_end -= diff;
@@ -278,7 +297,7 @@ impl<T: AsMut<Vec<u8>>> LangTag<T> {
 	pub fn variants_mut(&mut self) -> VariantsMut {
 		VariantsMut {
 			buffer: self.data.as_mut(),
-			p: &mut self.p
+			p: &mut self.p,
 		}
 	}
 
@@ -287,7 +306,7 @@ impl<T: AsMut<Vec<u8>>> LangTag<T> {
 	pub fn extensions_mut(&mut self) -> ExtensionsMut {
 		ExtensionsMut {
 			buffer: self.data.as_mut(),
-			p: &mut self.p
+			p: &mut self.p,
 		}
 	}
 
@@ -296,7 +315,7 @@ impl<T: AsMut<Vec<u8>>> LangTag<T> {
 	pub fn private_use_subtags_mut(&mut self) -> PrivateUseSubtagsMut {
 		PrivateUseSubtagsMut {
 			buffer: self.data.as_mut(),
-			offset: self.p.extension_end
+			offset: self.p.extension_end,
 		}
 	}
 }

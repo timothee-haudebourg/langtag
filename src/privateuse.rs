@@ -1,18 +1,15 @@
-use std::{
-	fmt,
-	hash::{
-		Hash,
-		Hasher
-	},
-	convert::TryFrom,
-	ops::Deref,
-	cmp::Ordering
-};
 use crate::Error;
+use std::{
+	cmp::Ordering,
+	convert::TryFrom,
+	fmt,
+	hash::{Hash, Hasher},
+	ops::Deref,
+};
 
 component! {
 	/// List of private use subtags.
-	/// 
+	///
 	/// Private use subtags component of a language tag.
 	/// If not empty, it is composed of the prefix `x-` followed
 	/// by a list of [`PrivateUseSubtag`] separated by the `-` character.
@@ -21,7 +18,7 @@ component! {
 
 component! {
 	/// Single private use subtag.
-	/// 
+	///
 	/// Private use subtags are used to indicate distinctions in language
 	/// that are important in a given context by private agreement.
 	privateuse_subtag, false, PrivateUseSubtag, InvalidPrivateUseSubtag
@@ -38,19 +35,19 @@ pub struct PrivateUseSubtagsMut<'a> {
 	pub(crate) buffer: &'a mut Vec<u8>,
 
 	/// Offset of the private use subtags in the buffer (including the preceding `-` separator).
-	/// 
+	///
 	/// The private use component is assumed to span to the buffer's end.
-	pub(crate) offset: usize
+	pub(crate) offset: usize,
 }
 
 impl<'a> PrivateUseSubtagsMut<'a> {
 	/// Return the component offset.
-	/// 
+	///
 	/// If the `offset` field is not 0, the it includes the preceding `-` separator so we must add 1.
 	#[inline]
 	fn component_offset(&self) -> usize {
 		if self.offset > 0 {
-			self.offset+1
+			self.offset + 1
 		} else {
 			self.offset
 		}
@@ -58,13 +55,11 @@ impl<'a> PrivateUseSubtagsMut<'a> {
 
 	/// Returns a non-mutable reference to the private use subtags.
 	#[inline]
-	pub fn as_ref(&self) -> &PrivateUseSubtags {
+	pub fn as_private_use_subtags(&self) -> &PrivateUseSubtags {
 		let i = self.component_offset();
 
 		if i < self.buffer.len() {
-			unsafe {
-				PrivateUseSubtags::parse_unchecked(&self.buffer[i..])
-			}
+			unsafe { PrivateUseSubtags::parse_unchecked(&self.buffer[i..]) }
 		} else {
 			PrivateUseSubtags::empty()
 		}
@@ -83,7 +78,7 @@ impl<'a> PrivateUseSubtagsMut<'a> {
 	}
 
 	/// Insert a new subtag if it is not already present.
-	/// 
+	///
 	/// Return `true` if the subtag has been inserted,
 	/// and `false` if the subtag was already present.
 	#[inline]
@@ -113,19 +108,19 @@ impl<'a> PrivateUseSubtagsMut<'a> {
 	}
 
 	/// Remove all occurences of the given subtag.
-	/// 
+	///
 	/// Return `true` if the subtag was present and `false` otherwise.
 	#[inline]
 	pub fn remove<T: AsRef<[u8]> + ?Sized>(&mut self, subtag: &T) -> bool {
-		let mut i = self.offset+3; // current visited byte index.
-		let mut subtag_offset = self.offset+2; // offset of the current subtag (including the `-` prefix).
+		let mut i = self.offset + 3; // current visited byte index.
+		let mut subtag_offset = self.offset + 2; // offset of the current subtag (including the `-` prefix).
 		let mut removed = false; // did we remove some subtag?
 
 		while i < self.buffer.len() {
 			if self.buffer[i] == b'-' {
 				// if the current subtag matches the subtag to remove.
-				if &self.buffer[(subtag_offset+1)..i] == subtag.as_ref() {
-					let len = i-subtag_offset;
+				if &self.buffer[(subtag_offset + 1)..i] == subtag.as_ref() {
+					let len = i - subtag_offset;
 					crate::replace(self.buffer, subtag_offset..i, &[]);
 					i -= len;
 					removed = true
@@ -138,18 +133,18 @@ impl<'a> PrivateUseSubtagsMut<'a> {
 		}
 
 		// if the subtag to remove is in last position.
-		if &self.buffer[(subtag_offset+1)..i] == subtag.as_ref() {
+		if &self.buffer[(subtag_offset + 1)..i] == subtag.as_ref() {
 			crate::replace(self.buffer, subtag_offset..i, &[]);
 			removed = true
 		}
 
 		// if there are no subtags left, remove the `x-` prefix.
-		if self.buffer.len()-self.component_offset() == 1 {
+		if self.buffer.len() - self.component_offset() == 1 {
 			if self.offset > 0 {
 				// if the offset if not 0, also remove the preceding `-` separator.
-				crate::replace(self.buffer, self.offset..(self.offset+2), &[]);
+				crate::replace(self.buffer, self.offset..(self.offset + 2), &[]);
 			} else {
-				crate::replace(self.buffer, self.offset..(self.offset+1), &[]);
+				crate::replace(self.buffer, self.offset..(self.offset + 1), &[]);
 			}
 		}
 
@@ -157,10 +152,18 @@ impl<'a> PrivateUseSubtagsMut<'a> {
 	}
 }
 
+impl<'a> AsRef<PrivateUseSubtags> for PrivateUseSubtagsMut<'a> {
+	/// Returns a non-mutable reference to the private use subtags.
+	#[inline]
+	fn as_ref(&self) -> &PrivateUseSubtags {
+		self.as_private_use_subtags()
+	}
+}
+
 /// Private use tag.
 #[derive(Clone, Copy)]
 pub struct PrivateUseTag<T: ?Sized = [u8]> {
-	data: T
+	data: T,
 }
 
 impl<T: AsRef<[u8]>> PrivateUseTag<T> {
@@ -168,24 +171,32 @@ impl<T: AsRef<[u8]>> PrivateUseTag<T> {
 	#[inline]
 	pub fn new(t: T) -> Result<PrivateUseTag<T>, T> {
 		let bytes = t.as_ref();
-		if bytes.len() > 0 && crate::parse::privateuse(bytes, 0) == bytes.len() {
-			Ok(PrivateUseTag {
-				data: t
-			})
+		if !bytes.is_empty() && crate::parse::privateuse(bytes, 0) == bytes.len() {
+			Ok(PrivateUseTag { data: t })
 		} else {
 			Err(t)
 		}
 	}
 
 	/// Use the given data as a private use tag without checking it.
-	/// 
+	///
 	/// ## Safety
 	/// The given data must be a valid private use tag.
 	#[inline]
 	pub unsafe fn new_unchecked(t: T) -> PrivateUseTag<T> {
-		PrivateUseTag {
-			data: t
-		}
+		PrivateUseTag { data: t }
+	}
+
+	/// Returns a reference to the tag's buffer.
+	#[inline]
+	pub fn as_inner(&self) -> &T {
+		&self.data
+	}
+
+	/// Consumes the tag and returns its underlying buffer.
+	#[inline]
+	pub fn into_inner(self) -> T {
+		self.data
 	}
 }
 
@@ -194,17 +205,15 @@ impl PrivateUseTag {
 	#[inline]
 	pub fn parse<'a, T: AsRef<[u8]> + ?Sized>(bytes: &T) -> Result<&'a PrivateUseTag, Error> {
 		let bytes = bytes.as_ref();
-		if bytes.len() > 0 && crate::parse::privateuse(bytes, 0) == bytes.len() {
-			Ok(unsafe {
-				&*(bytes as *const [u8] as *const PrivateUseTag)
-			})
+		if !bytes.is_empty() && crate::parse::privateuse(bytes, 0) == bytes.len() {
+			Ok(unsafe { &*(bytes as *const [u8] as *const PrivateUseTag) })
 		} else {
 			Err(Error::InvalidPrivateUseSubtags)
 		}
 	}
 
 	/// Borrow the given data as a private use tag without checking it.
-	/// 
+	///
 	/// ## Safety
 	/// The given data must be a valid private use tag.
 	#[inline]
@@ -224,17 +233,13 @@ impl<T: AsRef<[u8]> + ?Sized> PrivateUseTag<T> {
 	/// Returns the string representation of this private use tag.
 	#[inline]
 	pub fn as_str(&self) -> &str {
-		unsafe {
-			std::str::from_utf8_unchecked(self.as_bytes())
-		}
+		unsafe { std::str::from_utf8_unchecked(self.as_bytes()) }
 	}
 
 	/// Iterate through the subtags.
 	#[inline]
 	pub fn subtags(&self) -> &PrivateUseSubtags {
-		unsafe {
-			PrivateUseSubtags::parse_unchecked(self.as_bytes())
-		}
+		unsafe { PrivateUseSubtags::parse_unchecked(self.as_bytes()) }
 	}
 }
 
@@ -244,7 +249,7 @@ impl<T: AsMut<Vec<u8>>> PrivateUseTag<T> {
 	pub fn subtags_mut(&mut self) -> PrivateUseSubtagsMut {
 		PrivateUseSubtagsMut {
 			buffer: self.data.as_mut(),
-			offset: 0
+			offset: 0,
 		}
 	}
 }

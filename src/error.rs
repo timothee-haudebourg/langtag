@@ -19,7 +19,7 @@ pub enum Error {
 	InvalidRegion,
 	InvalidScript,
 	InvalidVariant,
-	InvalidVariants
+	InvalidVariants,
 }
 
 impl fmt::Display for Error {
@@ -42,7 +42,7 @@ impl fmt::Display for Error {
 			InvalidRegion => write!(f, "invalid region subtag"),
 			InvalidScript => write!(f, "invalid script subtag"),
 			InvalidVariant => write!(f, "invalid variant subtag"),
-			InvalidVariants => write!(f, "invalid variants")
+			InvalidVariants => write!(f, "invalid variants"),
 		}
 	}
 }

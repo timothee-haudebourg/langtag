@@ -7,37 +7,28 @@ fn test_primary_language() {
 		"fr",
 		LanguageTag::parse("fr")
 			.unwrap()
-			.language().unwrap().primary()
+			.language()
+			.unwrap()
+			.primary()
 	);
 	assert_eq!(
 		"de",
 		LanguageTag::parse("de")
 			.unwrap()
-			.language().unwrap().primary()
-	);
-	assert_eq!(
-		None,
-		LanguageTag::parse("x-fr-CH")
-			.unwrap()
 			.language()
-	);
-	assert_eq!(
-		None,
-		LanguageTag::parse("i-klingon")
 			.unwrap()
-			.language()
+			.primary()
 	);
-	assert_eq!(
-		None,
-		LanguageTag::parse("i-bnn")
-			.unwrap()
-			.language()
-	);
+	assert_eq!(None, LanguageTag::parse("x-fr-CH").unwrap().language());
+	assert_eq!(None, LanguageTag::parse("i-klingon").unwrap().language());
+	assert_eq!(None, LanguageTag::parse("i-bnn").unwrap().language());
 	assert_eq!(
 		"zh",
 		LanguageTag::parse("zh-hakka")
 			.unwrap()
-			.language().unwrap().primary()
+			.language()
+			.unwrap()
+			.primary()
 	)
 }
 
@@ -68,7 +59,7 @@ fn test_wellformed_tags() {
 		"fr-Latn-FR",
 		"fr-Latn-419",
 		"fr-FR",
-		"ax-TZ",	 // Not in the registry, but well-formed
+		"ax-TZ",     // Not in the registry, but well-formed
 		"fr-shadok", // Variant
 		"fr-y-myext-myext2",
 		"fra-Latn", // ISO 639 can be 3-letters
@@ -76,8 +67,8 @@ fn test_wellformed_tags() {
 		"fra-FX",
 		"i-klingon", // grandfathered with singleton
 		"I-kLINgon", // tags are case-insensitive...
-		"no-bok",	// grandfathered without singleton
-		"fr-Lat",	// Extended",
+		"no-bok",    // grandfathered without singleton
+		"fr-Lat",    // Extended",
 		"mn-Cyrl-MN",
 		"mN-cYrL-Mn",
 		"fr-Latn-CA",
@@ -98,11 +89,11 @@ fn test_wellformed_tags() {
 		"az-Arab-x-AZE-derbend",
 		"es-Latn-CO-x-private",
 		"en-US-boont",
-		"ab-x-abc-x-abc",	 // anything goes after x
-		"ab-x-abc-a-a",	   // ditto",
-		"i-default",		  // grandfathered",
-		"i-klingon",		  // grandfathered",
-		"abcd-Latn",		  // Language of 4 chars reserved for future use
+		"ab-x-abc-x-abc",     // anything goes after x
+		"ab-x-abc-a-a",       // ditto",
+		"i-default",          // grandfathered",
+		"i-klingon",          // grandfathered",
+		"abcd-Latn",          // Language of 4 chars reserved for future use
 		"AaBbCcDd-x-y-any-x", // Language of 5-8 chars, registered
 		"en",
 		"de-AT",
@@ -121,7 +112,7 @@ fn test_wellformed_tags() {
 		"xr-lqt-qu",  // extlang + region
 		"xr-p-lze",   // Extension
 	];
-	
+
 	for tag in tags {
 		let result = LanguageTag::parse(tag);
 		assert!(
@@ -165,7 +156,7 @@ fn test_broken_tags() {
 		"abcd-efg",
 		"aabbccddE",
 	];
-	
+
 	for tag in tags {
 		let result = LanguageTag::parse(tag);
 		assert!(
@@ -288,7 +279,7 @@ fn test_random_good_tags() {
 		"x-CHsHx-VDcOUAur-FqagDTx-H-V0e74R",
 		"uZIAZ-Xmbh-pd",
 	];
-	
+
 	for tag in tags {
 		let result = LanguageTag::parse(tag);
 		assert!(
@@ -409,4 +400,4 @@ fn test_random_bad_tags() {
 			result.ok().unwrap()
 		);
 	}
-}	
+}
