@@ -1,9 +1,9 @@
 # Language Tags
 
-[![CI](https://github.com/timothee-haudebourg/langtag/workflows/CI/badge.svg)](https://github.com/timothee-haudebourg/locspan/actions)
-[![Crate informations](https://img.shields.io/crates/v/langtag.svg?style=flat-square)](https://crates.io/crates/locspan)
+[![CI](https://github.com/timothee-haudebourg/langtag/workflows/CI/badge.svg)](https://github.com/timothee-haudebourg/langtag/actions)
+[![Crate informations](https://img.shields.io/crates/v/langtag.svg?style=flat-square)](https://crates.io/crates/langtag)
 [![License](https://img.shields.io/crates/l/langtag.svg?style=flat-square)](https://github.com/timothee-haudebourg/langtag#license)
-[![Documentation](https://img.shields.io/badge/docs-latest-blue.svg?style=flat-square)](https://docs.rs/locspan)
+[![Documentation](https://img.shields.io/badge/docs-latest-blue.svg?style=flat-square)](https://docs.rs/langtag)
 
 This crate provides an implementation of *language tags* defined by
 [RFC5646](https://tools.ietf.org/html/rfc5646) ([BCP47](https://tools.ietf.org/html/bcp47)).
