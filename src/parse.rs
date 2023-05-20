@@ -360,7 +360,7 @@ fn separator(data: &[u8], i: usize) -> bool {
 }
 
 fn is_digit(c: u8) -> bool {
-	(b'0'..=b'9').contains(&c)
+	c.is_ascii_digit()
 }
 
 fn digit(data: &[u8], i: usize) -> bool {
@@ -373,7 +373,7 @@ fn digit(data: &[u8], i: usize) -> bool {
 }
 
 fn is_alpha(c: u8) -> bool {
-	(b'A'..=b'Z').contains(&c) || (b'a'..=b'z').contains(&c)
+	c.is_ascii_alphabetic()
 }
 
 fn alpha(data: &[u8], i: usize) -> bool {

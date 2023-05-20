@@ -87,7 +87,7 @@ macro_rules! component {
 		impl $id<[u8]> {
 			/// Parse and borrow the given data.
 			#[inline]
-			pub fn parse<'a, T: AsRef<[u8]> + ?Sized>(bytes: &'a T) -> Result<&'a $id<[u8]>, Error> {
+			pub fn parse<T: AsRef<[u8]> + ?Sized>(bytes: &T) -> Result<&$id<[u8]>, Error> {
 				let bytes = bytes.as_ref();
 
 				if ($multi || bytes.len() > 0) && crate::parse::$parser(bytes, 0) == bytes.len() {
@@ -104,7 +104,7 @@ macro_rules! component {
 			/// ## Safety
 			/// The data must be syntactically correct.
 			#[inline]
-			pub unsafe fn parse_unchecked<'a, T: AsRef<[u8]> + ?Sized>(bytes: &'a T) -> &'a $id<[u8]> {
+			pub unsafe fn parse_unchecked<T: AsRef<[u8]> + ?Sized>(bytes: &T) -> &$id<[u8]> {
 				&*(bytes.as_ref() as *const [u8] as *const $id<[u8]>)
 			}
 		}
@@ -112,7 +112,7 @@ macro_rules! component {
 		impl $id<Vec<u8>> {
 			/// Parse and copy the input data.
 			#[inline]
-			pub fn parse_copy<'a, T: AsRef<[u8]> + ?Sized>(bytes: &'a T) -> Result<$id<Vec<u8>>, Error> {
+			pub fn parse_copy<T: AsRef<[u8]> + ?Sized>(bytes: &T) -> Result<$id<Vec<u8>>, Error> {
 				let bytes = bytes.as_ref();
 				let mut buffer = Vec::new();
 				buffer.resize(bytes.len(), 0);
@@ -125,7 +125,7 @@ macro_rules! component {
 			/// ## Safety
 			/// The input data must be syntactically correct.
 			#[inline]
-			pub unsafe fn parse_copy_unchecked<'a, T: AsRef<[u8]> + ?Sized>(bytes: &'a T) -> $id<Vec<u8>> {
+			pub unsafe fn parse_copy_unchecked<T: AsRef<[u8]> + ?Sized>(bytes: &T) -> $id<Vec<u8>> {
 				let bytes = bytes.as_ref();
 				let mut buffer = Vec::new();
 				buffer.resize(bytes.len(), 0);
@@ -759,7 +759,7 @@ pub type PrivateUseTagBuf = PrivateUseTag<Vec<u8>>;
 
 #[inline]
 pub(crate) fn into_smallcase(c: u8) -> u8 {
-	if (b'A'..=b'Z').contains(&c) {
+	if c.is_ascii_uppercase() {
 		c + 0x20
 	} else {
 		c
@@ -866,5 +866,49 @@ pub(crate) fn replace(buffer: &mut Vec<u8>, range: Range<usize>, content: &[u8])
 	// actually replace the content.
 	for i in 0..content.len() {
 		buffer[range.start + i] = content[i]
+	}
+}
+
+#[cfg(feature = "serde")]
+impl<'de, B: AsRef<[u8]> + From<String>> serde::Deserialize<'de> for LanguageTagBuf<B> {
+	fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+	where
+		D: serde::Deserializer<'de>,
+	{
+		use std::marker::PhantomData;
+		struct Visitor<B>(PhantomData<B>);
+
+		impl<'de, B: AsRef<[u8]> + From<String>> serde::de::Visitor<'de> for Visitor<B> {
+			type Value = LanguageTagBuf<B>;
+
+			fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+				write!(formatter, "language tag")
+			}
+
+			fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
+			where
+				E: serde::de::Error,
+			{
+				LanguageTagBuf::<B>::new(v.into()).map_err(|(_, unexpected)| {
+					E::invalid_value(serde::de::Unexpected::Bytes(unexpected.as_ref()), &self)
+				})
+			}
+
+			fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+			where
+				E: serde::de::Error,
+			{
+				self.visit_string(v.to_owned())
+			}
+
+			fn visit_borrowed_str<E>(self, v: &'de str) -> Result<Self::Value, E>
+			where
+				E: serde::de::Error,
+			{
+				self.visit_string(v.to_owned())
+			}
+		}
+
+		deserializer.deserialize_string(Visitor(PhantomData))
 	}
 }
