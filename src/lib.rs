@@ -391,6 +391,7 @@ macro_rules! iterator {
 	};
 }
 
+mod as_ref;
 mod error;
 mod extension;
 mod grandfathered;
@@ -401,6 +402,7 @@ mod privateuse;
 mod variant;
 
 pub use self::langtag::*;
+pub use as_ref::*;
 pub use error::*;
 pub use extension::*;
 pub use grandfathered::*;
@@ -470,6 +472,12 @@ impl LanguageTagBuf {
 		buffer.resize(bytes.len(), 0);
 		buffer.copy_from_slice(bytes);
 		Self::new(buffer).map_err(|(e, _)| e)
+	}
+}
+
+impl<T: AsRef<[u8]>> AsLanguageTag<[u8]> for LanguageTagBuf<T> {
+	fn as_language_tag(&self) -> LanguageTag<[u8]> {
+		self.as_ref()
 	}
 }
 
@@ -584,6 +592,12 @@ macro_rules! language_tag_impl {
 			}
 		}
 	};
+}
+
+impl<'a, T: ?Sized> AsLanguageTag<T> for LanguageTag<'a, T> {
+	fn as_language_tag(&self) -> LanguageTag<T> {
+		*self
+	}
 }
 
 impl<'a, T: AsRef<[u8]> + ?Sized> LanguageTag<'a, T> {
