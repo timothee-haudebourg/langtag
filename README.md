@@ -5,50 +5,35 @@
 [![License](https://img.shields.io/crates/l/langtag.svg?style=flat-square)](https://github.com/timothee-haudebourg/langtag#license)
 [![Documentation](https://img.shields.io/badge/docs-latest-blue.svg?style=flat-square)](https://docs.rs/langtag)
 
+<!-- cargo-rdme start -->
+
 This crate provides an implementation of *language tags* defined by
-[RFC5646](https://tools.ietf.org/html/rfc5646) ([BCP47](https://tools.ietf.org/html/bcp47)).
+[RFC5646] ([BCP47]).
+
+[RFC5646]: <https://tools.ietf.org/html/rfc5646>
+[BCP47]: <https://tools.ietf.org/html/bcp47>
 
 ### Usage
 
-You can easily parse new language from anything that provides a `[u8]` reference:
+You can easily parse new language from any string:
 ```rust
-extern crate langtag;
-use langtag::LanguageTag;
+use langtag::LangTag;
 
-fn main() -> Result<(), langtag::Error> {
-  let tag = LanguageTag::parse("fr-FR")?;
+fn main() -> Result<(), langtag::InvalidLangTag<&'static str>> {
+  let tag = LangTag::new("fr-FR")?;
   assert_eq!(tag.language().unwrap().primary(), "fr");
   assert!(tag == "Fr-fr"); // comparison is case-insensitive.
   Ok(())
 }
 ```
 
-Note that [`LanguageTag::parse`] does *not* copy the data it is given,
-but only borrows it.
-You can create an owning `LanguageTag` instance by using
-[`LanguageTagBuf::parse_copy`] to copy the data,
-or simply [`LanguageTagBuf::new`] to move the data.
+Note that `LangTag::new` does *not* copy the data it is given,
+but only borrows it. The `LangTagBuf` type allows you to own the language
+tag. Once parsed, you can explore every component of the language tag using
+the provided functions.
 
-Once parsed, you can explore every component of the language tag using the provided functions.
 
-#### Mutable language tags
-
-When the language tags owns its buffer through `Vec<u8>`,
-it becomes possible to access the tag mutably to modify it.
-```rust
-extern crate langtag;
-use std::convert::TryInto;
-use langtag::LangTag;
-
-fn main() -> Result<(), langtag::Error> {
-  let mut tag = LangTag::parse_copy("fr-FR")?;
-  tag.language_mut().set_primary("jp".try_into()?);
-  tag.set_region(None);
-  tag.extensions_mut().insert('f'.try_into()?, "bar".try_into()?);
-  assert_eq!(tag, "jp-f-bar");
-  Ok(())
-}
-```
+<!-- cargo-rdme end -->
 
 ## License
 

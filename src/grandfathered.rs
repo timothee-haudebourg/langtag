@@ -1,6 +1,10 @@
-use crate::{Error, Language};
+use crate::{utils, Language};
 use std::convert::TryFrom;
 use std::fmt;
+
+#[derive(Debug, thiserror::Error)]
+#[error("invalid grandfathered tag")]
+pub struct InvalidGrandfatheredTag<T>(pub T);
 
 /// Grandfathered tags.
 ///
@@ -15,7 +19,7 @@ use std::fmt;
 /// The remainder of the previously registered tags are "grandfathered",
 /// and are all veriants of this enum type.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum GrandfatheredTag {
+pub enum GrandfatheredLangTag {
 	// irregular
 	EnGbOed,
 	IAmi,
@@ -46,39 +50,39 @@ pub enum GrandfatheredTag {
 	ZhXiang,
 }
 
-use GrandfatheredTag::*;
+use GrandfatheredLangTag::*;
 
 /// List of all grandfathered tags.
-pub static GRANDFATHERED: [GrandfatheredTag; 26] = [
+pub static GRANDFATHERED: [GrandfatheredLangTag; 26] = [
 	EnGbOed, IAmi, IBnn, IDefault, IEnochian, IHak, IKlingon, ILux, IMingo, INavajo, IPwn, ITao,
 	ITay, ITsu, SgnBeFr, SgnBeNl, SgnChDe, ArtLojban, CelGaulish, NoBok, NoNyn, ZhGuoyu, ZhHakka,
 	ZhMin, ZhMinNan, ZhXiang,
 ];
 
-impl GrandfatheredTag {
+impl GrandfatheredLangTag {
 	/// Try to parse a grandfathered tag.
 	#[inline]
-	pub fn new<T: AsRef<[u8]>>(t: T) -> Result<GrandfatheredTag, T> {
+	pub fn new<T: AsRef<[u8]>>(t: T) -> Result<GrandfatheredLangTag, T> {
 		match Self::try_from(t.as_ref()) {
 			Ok(tag) => Ok(tag),
 			Err(_) => Err(t),
 		}
 	}
 
-	/// Get the language the grandfathered tag if it is regular.
+	/// Get the language of the grandfathered tag if it is regular.
 	#[inline]
-	pub fn language(&self) -> Option<&Language> {
+	pub fn language(&self) -> Option<&'static Language> {
 		unsafe {
 			match self {
-				ArtLojban => Some(Language::parse_unchecked(b"art")),
-				CelGaulish => Some(Language::parse_unchecked(b"cel")),
-				NoBok => Some(Language::parse_unchecked(b"no")),
-				NoNyn => Some(Language::parse_unchecked(b"no")),
-				ZhGuoyu => Some(Language::parse_unchecked(b"zh")),
-				ZhHakka => Some(Language::parse_unchecked(b"zh")),
-				ZhMin => Some(Language::parse_unchecked(b"zh")),
-				ZhMinNan => Some(Language::parse_unchecked(b"zh")),
-				ZhXiang => Some(Language::parse_unchecked(b"zh")),
+				ArtLojban => Some(Language::new_unchecked("art")),
+				CelGaulish => Some(Language::new_unchecked("cel")),
+				NoBok => Some(Language::new_unchecked("no")),
+				NoNyn => Some(Language::new_unchecked("no")),
+				ZhGuoyu => Some(Language::new_unchecked("zh")),
+				ZhHakka => Some(Language::new_unchecked("zh")),
+				ZhMin => Some(Language::new_unchecked("zh")),
+				ZhMinNan => Some(Language::new_unchecked("zh")),
+				ZhXiang => Some(Language::new_unchecked("zh")),
 				_ => None,
 			}
 		}
@@ -87,7 +91,7 @@ impl GrandfatheredTag {
 	/// Returns the bytes representation of the tag.
 	#[inline]
 	pub fn as_bytes(&self) -> &[u8] {
-		use GrandfatheredTag::*;
+		use GrandfatheredLangTag::*;
 		match self {
 			EnGbOed => b"en-GB-oed",
 			IAmi => b"i-ami",
@@ -126,22 +130,22 @@ impl GrandfatheredTag {
 	}
 }
 
-impl<'a> TryFrom<&'a [u8]> for GrandfatheredTag {
-	type Error = Error;
+impl<'a> TryFrom<&'a [u8]> for GrandfatheredLangTag {
+	type Error = InvalidGrandfatheredTag<&'a [u8]>;
 
 	#[inline]
-	fn try_from(bytes: &'a [u8]) -> Result<GrandfatheredTag, Error> {
+	fn try_from(bytes: &'a [u8]) -> Result<GrandfatheredLangTag, Self::Error> {
 		for tag in &GRANDFATHERED {
-			if crate::case_insensitive_eq(tag.as_bytes(), bytes) {
+			if utils::case_insensitive_eq(tag.as_bytes(), bytes) {
 				return Ok(*tag);
 			}
 		}
 
-		Err(Error::InvalidGrandfatheredTag)
+		Err(InvalidGrandfatheredTag(bytes))
 	}
 }
 
-impl fmt::Display for GrandfatheredTag {
+impl fmt::Display for GrandfatheredLangTag {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		self.as_str().fmt(f)
 	}

@@ -1,30 +1,22 @@
-use langtag::LanguageTag;
+use langtag::LangTag;
 
 // Tests from RFC 5646 2.2.1
 #[test]
 fn test_primary_language() {
 	assert_eq!(
 		"fr",
-		LanguageTag::parse("fr")
-			.unwrap()
-			.language()
-			.unwrap()
-			.primary()
+		LangTag::new("fr").unwrap().language().unwrap().primary()
 	);
 	assert_eq!(
 		"de",
-		LanguageTag::parse("de")
-			.unwrap()
-			.language()
-			.unwrap()
-			.primary()
+		LangTag::new("de").unwrap().language().unwrap().primary()
 	);
-	assert_eq!(None, LanguageTag::parse("x-fr-CH").unwrap().language());
-	assert_eq!(None, LanguageTag::parse("i-klingon").unwrap().language());
-	assert_eq!(None, LanguageTag::parse("i-bnn").unwrap().language());
+	assert_eq!(None, LangTag::new("x-fr-CH").unwrap().language());
+	assert_eq!(None, LangTag::new("i-klingon").unwrap().language());
+	assert_eq!(None, LangTag::new("i-bnn").unwrap().language());
 	assert_eq!(
 		"zh",
-		LanguageTag::parse("zh-hakka")
+		LangTag::new("zh-hakka")
 			.unwrap()
 			.language()
 			.unwrap()
@@ -34,18 +26,18 @@ fn test_primary_language() {
 
 #[test]
 fn test_unicode() {
-	assert!(LanguageTag::parse("zh-x-Üńìcødê").is_err());
+	assert!(LangTag::new("zh-x-Üńìcødê").is_err());
 }
 
 #[test]
 fn test_cmp() {
 	assert_eq!(
-		LanguageTag::parse("dE-AraB-lY").unwrap(),
-		LanguageTag::parse("DE-aRaB-LY").unwrap()
+		LangTag::new("dE-AraB-lY").unwrap(),
+		LangTag::new("DE-aRaB-LY").unwrap()
 	);
 	assert_ne!(
-		LanguageTag::parse("zh").unwrap(),
-		LanguageTag::parse("zh-Latn").unwrap()
+		LangTag::new("zh").unwrap(),
+		LangTag::new("zh-Latn").unwrap()
 	);
 }
 
@@ -114,7 +106,7 @@ fn test_wellformed_tags() {
 	];
 
 	for tag in tags {
-		let result = LanguageTag::parse(tag);
+		let result = LangTag::new(tag);
 		assert!(
 			result.is_ok(),
 			"{} should be considered well-formed but returned error {}",
@@ -158,7 +150,7 @@ fn test_broken_tags() {
 	];
 
 	for tag in tags {
-		let result = LanguageTag::parse(tag);
+		let result = LangTag::new(tag);
 		assert!(
 			result.is_err(),
 			"{} should be considered not well-formed but returned result {:?}",
@@ -281,7 +273,7 @@ fn test_random_good_tags() {
 	];
 
 	for tag in tags {
-		let result = LanguageTag::parse(tag);
+		let result = LangTag::new(tag);
 		assert!(
 			result.is_ok(),
 			"{} should be considered well-formed but returned error {}",
@@ -392,7 +384,7 @@ fn test_random_bad_tags() {
 	];
 
 	for tag in tags {
-		let result = LanguageTag::parse(tag);
+		let result = LangTag::new(tag);
 		assert!(
 			result.is_err(),
 			"{} should be considered not well-formed but returned result {:?}",

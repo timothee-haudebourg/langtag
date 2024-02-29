@@ -2,7 +2,7 @@
 name = "langtag"
 version = "0.3.4"
 authors = ["Timothée Haudebourg <author@haudebourg.net>"]
-edition = "2018"
+edition = "2021"
 categories = ["parsing", "data-structures"]
 keywords = ["language", "tag", "langtag", "rfc"]
 description = "Language tags implementation following RFC 5646"
@@ -12,4 +12,6 @@ license = "MIT/Apache-2.0"
 readme = "README.md"
 
 [dependencies]
+static-regular-grammar = "2.0.1"
+thiserror = "1.0.57"
 serde = { version = "1.0", features = ["derive"], optional = true }
