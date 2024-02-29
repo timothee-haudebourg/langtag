@@ -11,6 +11,10 @@ documentation = "https://docs.rs/langtag"
 license = "MIT/Apache-2.0"
 readme = "README.md"
 
+[features]
+## Enable serialization/deserialization with `serde`.
+serde = ["dep:serde"]
+
 [dependencies]
 static-regular-grammar = "2.0.1"
 thiserror = "1.0.57"
