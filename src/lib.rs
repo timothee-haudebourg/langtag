@@ -203,6 +203,17 @@ impl Hash for LangTag {
 	}
 }
 
+/// Parses an [`LangTag`] at compile time.
+#[macro_export]
+macro_rules! langtag {
+	($value:literal) => {
+		match $crate::LangTag::from_str($value) {
+			Ok(value) => value,
+			Err(_) => panic!("invalid language tag"),
+		}
+	};
+}
+
 /// Language tag with type information (normal, private use or grandfathered).
 pub enum TypedLangTag<'a> {
 	Normal(&'a NormalLangTag),

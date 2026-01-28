@@ -1,4 +1,6 @@
-use langtag::LangTag;
+use langtag::{LangTag, langtag};
+
+const _: &LangTag = langtag!("fr-FR");
 
 // Tests from RFC 5646 2.2.1
 #[test]
