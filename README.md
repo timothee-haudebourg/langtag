@@ -32,6 +32,9 @@ but only borrows it. The `LangTagBuf` type allows you to own the language
 tag. Once parsed, you can explore every component of the language tag using
 the provided functions.
 
+You can use this library with `no_std` by disabling the `std` feature,
+though it will also disable all the `*Buf` types.
+
 
 <!-- cargo-rdme end -->
 
