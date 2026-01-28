@@ -1,6 +1,6 @@
-use crate::{utils, Language};
-use std::convert::TryFrom;
-use std::fmt;
+use core::fmt;
+
+use crate::{Language, utils};
 
 #[derive(Debug, thiserror::Error)]
 #[error("invalid grandfathered tag")]
@@ -126,7 +126,7 @@ impl GrandfatheredLangTag {
 	/// Returns the string representation of the tag.
 	#[inline]
 	pub fn as_str(&self) -> &str {
-		unsafe { std::str::from_utf8_unchecked(self.as_bytes()) }
+		unsafe { core::str::from_utf8_unchecked(self.as_bytes()) }
 	}
 }
 

@@ -25,9 +25,10 @@
 //!
 //! [`LangTag::new`]: crate::LangTag::new
 //! [`LangTagBuf`]: crate::LangTagBuf
-use std::hash::Hash;
+#![cfg_attr(not(feature = "std"), no_std)]
 
-use static_regular_grammar::RegularGrammar;
+use core::hash::Hash;
+use static_automata::grammar;
 
 mod grandfathered;
 mod normal;
@@ -37,16 +38,42 @@ mod utils;
 pub use grandfathered::*;
 pub use normal::*;
 pub use private_use::*;
-use utils::str_eq;
+
+#[allow(clippy::manual_range_patterns)]
+#[grammar(
+	file = "grammar.abnf",
+	export(
+		"Language-Tag",
+		"privateuse",
+		"privateuse-subtag",
+		"langtag",
+		"language",
+		"primary",
+		"extlang",
+		"extlang-tag",
+		"script",
+		"region",
+		"variant",
+		"variants",
+		"extension",
+		"extension-subtag",
+		"extensions"
+	)
+)]
+pub(crate) mod grammar {}
 
 /// Any language tag (normal, private use or grandfathered).
-#[derive(RegularGrammar)]
-#[grammar(file = "src/grammar.abnf", cache = "automata/langtag.aut.cbor")]
-#[grammar(sized(
-	LangTagBuf,
-	derive(Debug, Display, PartialEq, Eq, PartialOrd, Ord, Hash)
-))]
-#[cfg_attr(feature = "serde", grammar(serde))]
+#[derive(static_automata::Validate, str_newtype::StrNewType)]
+#[automaton(crate::grammar::LanguageTag)]
+#[newtype(
+	no_deref,
+	ord([u8], &[u8], str, &str)
+)]
+#[cfg_attr(
+	feature = "std",
+	newtype(ord(Vec<u8>, String), owned(LangTagBuf, derive(PartialEq, Eq, PartialOrd, Ord, Hash)))
+)]
+#[cfg_attr(feature = "serde", newtype(serde))]
 pub struct LangTag(str);
 
 impl LangTag {
@@ -94,7 +121,7 @@ impl LangTag {
 	}
 
 	/// Returns an iterator over the private use subtag subtags.
-	pub fn private_use_subtags(&self) -> PrivateUseIter {
+	pub fn private_use_subtags(&self) -> PrivateUseIter<'_> {
 		self.private_use()
 			.map(PrivateUse::iter)
 			.unwrap_or(PrivateUseIter::empty())
@@ -136,7 +163,7 @@ impl LangTag {
 	}
 
 	/// Find out what kind of language tag `self` is.
-	pub fn as_typed(&self) -> TypedLangTag {
+	pub fn as_typed(&self) -> TypedLangTag<'_> {
 		match NormalLangTag::new(&self.0) {
 			Ok(t) => TypedLangTag::Normal(t),
 			Err(_) => match PrivateUseLangTag::new(&self.0) {
@@ -155,23 +182,20 @@ impl PartialEq for LangTag {
 
 impl Eq for LangTag {}
 
-str_eq!(LangTag);
-str_eq!(LangTagBuf);
-
 impl PartialOrd for LangTag {
-	fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+	fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
 		Some(self.cmp(other))
 	}
 }
 
 impl Ord for LangTag {
-	fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+	fn cmp(&self, other: &Self) -> core::cmp::Ordering {
 		utils::case_insensitive_cmp(self.as_bytes(), other.as_bytes())
 	}
 }
 
 impl Hash for LangTag {
-	fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+	fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
 		utils::case_insensitive_hash(self.as_bytes(), state)
 	}
 }

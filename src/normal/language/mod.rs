@@ -1,28 +1,28 @@
-use crate::utils::{self, str_eq};
-use static_regular_grammar::RegularGrammar;
-use std::hash::Hash;
+use core::hash::Hash;
+
+use crate::utils;
 
 mod extlang;
-pub use extlang::*;
-
 mod primary;
+
+pub use extlang::*;
 pub use primary::*;
 
 /// Primary and extended language subtags.
 ///
 /// This type represents the primary language subtag (first subtag in a
 /// language tag) and the extended language subtags associated with it.
-#[derive(RegularGrammar)]
-#[grammar(
-	file = "src/grammar.abnf",
-	entry_point = "language",
-	cache = "automata/language.aut.cbor"
+#[derive(static_automata::Validate, str_newtype::StrNewType)]
+#[automaton(crate::grammar::Language)]
+#[newtype(
+	no_deref,
+	ord([u8], &[u8], str, &str)
 )]
-#[grammar(sized(
-	LanguageBuf,
-	derive(Debug, Display, PartialEq, Eq, PartialOrd, Ord, Hash)
-))]
-#[cfg_attr(feature = "serde", grammar(serde))]
+#[cfg_attr(
+	feature = "std",
+	newtype(ord(Vec<u8>, String), owned(LanguageBuf, derive(PartialEq, Eq, PartialOrd, Ord, Hash)))
+)]
+#[cfg_attr(feature = "serde", newtype(serde))]
 pub struct Language(str);
 
 impl Language {
@@ -57,7 +57,7 @@ impl Language {
 
 	/// Return an iterator to the extended language subtags.
 	#[inline]
-	pub fn extension_subtags(&self) -> LanguageExtensionIter {
+	pub fn extension_subtags(&self) -> LanguageExtensionIter<'_> {
 		self.extension()
 			.map(LanguageExtension::iter)
 			.unwrap_or_default()
@@ -72,23 +72,20 @@ impl PartialEq for Language {
 
 impl Eq for Language {}
 
-str_eq!(Language);
-str_eq!(LanguageBuf);
-
 impl PartialOrd for Language {
-	fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+	fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
 		Some(self.cmp(other))
 	}
 }
 
 impl Ord for Language {
-	fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+	fn cmp(&self, other: &Self) -> core::cmp::Ordering {
 		utils::case_insensitive_cmp(self.as_bytes(), other.as_bytes())
 	}
 }
 
 impl Hash for Language {
-	fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+	fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
 		utils::case_insensitive_hash(self.as_bytes(), state)
 	}
 }

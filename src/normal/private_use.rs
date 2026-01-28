@@ -1,23 +1,23 @@
-use crate::utils::{self, str_eq};
-use static_regular_grammar::RegularGrammar;
-use std::hash::Hash;
+use core::hash::Hash;
+
+use crate::utils;
 
 /// Private use.
-#[derive(RegularGrammar)]
-#[grammar(
-	file = "src/grammar.abnf",
-	entry_point = "privateuse",
-	cache = "automata/private-use.aut.cbor"
+#[derive(static_automata::Validate, str_newtype::StrNewType)]
+#[automaton(crate::grammar::Privateuse)]
+#[newtype(
+	no_deref,
+	ord([u8], &[u8], str, &str)
 )]
-#[grammar(sized(
-	PrivateUseBuf,
-	derive(Debug, Display, PartialEq, Eq, PartialOrd, Ord, Hash)
-))]
-#[cfg_attr(feature = "serde", grammar(serde))]
+#[cfg_attr(
+	feature = "std",
+	newtype(ord(Vec<u8>, String), owned(PrivateUseBuf, derive(PartialEq, Eq, PartialOrd, Ord, Hash)))
+)]
+#[cfg_attr(feature = "serde", newtype(serde))]
 pub struct PrivateUse(str);
 
 impl PrivateUse {
-	pub fn iter(&self) -> PrivateUseIter {
+	pub fn iter(&self) -> PrivateUseIter<'_> {
 		PrivateUseIter::new(&self.0)
 	}
 }
@@ -30,23 +30,20 @@ impl PartialEq for PrivateUse {
 
 impl Eq for PrivateUse {}
 
-str_eq!(PrivateUse);
-str_eq!(PrivateUseBuf);
-
 impl PartialOrd for PrivateUse {
-	fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+	fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
 		Some(self.cmp(other))
 	}
 }
 
 impl Ord for PrivateUse {
-	fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+	fn cmp(&self, other: &Self) -> core::cmp::Ordering {
 		utils::case_insensitive_cmp(self.as_bytes(), other.as_bytes())
 	}
 }
 
 impl Hash for PrivateUse {
-	fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+	fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
 		utils::case_insensitive_hash(self.as_bytes(), state)
 	}
 }
@@ -86,20 +83,17 @@ impl<'a> Iterator for PrivateUseIter<'a> {
 }
 
 /// Private use subtag.
-///
-/// # Grammar
-///
-/// ```abnf
-/// PrivateUseSubtag = 1*8alphanum
-///
-/// alphanum         = (ALPHA / DIGIT) ; letters and numbers
-/// ```
-#[derive(RegularGrammar)]
-#[grammar(sized(
-	PrivateUseSubtagBuf,
-	derive(Debug, Display, PartialEq, Eq, PartialOrd, Ord, Hash)
-))]
-#[cfg_attr(feature = "serde", grammar(serde))]
+#[derive(static_automata::Validate, str_newtype::StrNewType)]
+#[automaton(crate::grammar::PrivateuseSubtag)]
+#[newtype(
+	no_deref,
+	ord([u8], &[u8], str, &str)
+)]
+#[cfg_attr(
+	feature = "std",
+	newtype(ord(Vec<u8>, String), owned(PrivateUseSubtagBuf, derive(PartialEq, Eq, PartialOrd, Ord, Hash)))
+)]
+#[cfg_attr(feature = "serde", newtype(serde))]
 pub struct PrivateUseSubtag(str);
 
 impl PartialEq for PrivateUseSubtag {
@@ -110,23 +104,20 @@ impl PartialEq for PrivateUseSubtag {
 
 impl Eq for PrivateUseSubtag {}
 
-str_eq!(PrivateUseSubtag);
-str_eq!(PrivateUseSubtagBuf);
-
 impl PartialOrd for PrivateUseSubtag {
-	fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+	fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
 		Some(self.cmp(other))
 	}
 }
 
 impl Ord for PrivateUseSubtag {
-	fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+	fn cmp(&self, other: &Self) -> core::cmp::Ordering {
 		utils::case_insensitive_cmp(self.as_bytes(), other.as_bytes())
 	}
 }
 
 impl Hash for PrivateUseSubtag {
-	fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+	fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
 		utils::case_insensitive_hash(self.as_bytes(), state)
 	}
 }

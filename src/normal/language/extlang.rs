@@ -1,8 +1,6 @@
-use std::hash::Hash;
+use core::hash::Hash;
 
-use static_regular_grammar::RegularGrammar;
-
-use crate::utils::{self, str_eq};
+use crate::utils;
 
 /// List of extended language subtags.
 ///
@@ -15,21 +13,21 @@ use crate::utils::{self, str_eq};
 /// primary language subtag.
 /// The type [`ExtendedLangTag`] represents a single extended
 /// language subtag.
-#[derive(RegularGrammar)]
-#[grammar(
-	file = "src/grammar.abnf",
-	entry_point = "extlang",
-	cache = "automata/extlang.aut.cbor"
+#[derive(static_automata::Validate, str_newtype::StrNewType)]
+#[automaton(crate::grammar::Extlang)]
+#[newtype(
+	no_deref,
+	ord([u8], &[u8], str, &str)
 )]
-#[grammar(sized(
-	LanguageExtensionBuf,
-	derive(Debug, Display, PartialEq, Eq, PartialOrd, Ord, Hash)
-))]
-#[cfg_attr(feature = "serde", grammar(serde))]
+#[cfg_attr(
+	feature = "std",
+	newtype(ord(Vec<u8>, String), owned(LanguageExtensionBuf, derive(PartialEq, Eq, PartialOrd, Ord, Hash)))
+)]
+#[cfg_attr(feature = "serde", newtype(serde))]
 pub struct LanguageExtension(str);
 
 impl LanguageExtension {
-	pub fn iter(&self) -> LanguageExtensionIter {
+	pub fn iter(&self) -> LanguageExtensionIter<'_> {
 		LanguageExtensionIter::new(&self.0)
 	}
 }
@@ -42,23 +40,20 @@ impl PartialEq for LanguageExtension {
 
 impl Eq for LanguageExtension {}
 
-str_eq!(LanguageExtension);
-str_eq!(LanguageExtensionBuf);
-
 impl PartialOrd for LanguageExtension {
-	fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+	fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
 		Some(self.cmp(other))
 	}
 }
 
 impl Ord for LanguageExtension {
-	fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+	fn cmp(&self, other: &Self) -> core::cmp::Ordering {
 		utils::case_insensitive_cmp(self.as_bytes(), other.as_bytes())
 	}
 }
 
 impl Hash for LanguageExtension {
-	fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+	fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
 		utils::case_insensitive_hash(self.as_bytes(), state)
 	}
 }
@@ -103,18 +98,17 @@ impl<'a> Iterator for LanguageExtensionIter<'a> {
 ///
 /// The type [`LanguageExtension`] represents a list of
 /// extended language.
-///
-/// # Grammar
-///
-/// ```abnf
-/// ExtendedLangTag = 3ALPHA
-/// ```
-#[derive(RegularGrammar)]
-#[grammar(sized(
-	ExtendedLangTagBuf,
-	derive(Debug, Display, PartialEq, Eq, PartialOrd, Ord, Hash)
-))]
-#[cfg_attr(feature = "serde", grammar(serde))]
+#[derive(static_automata::Validate, str_newtype::StrNewType)]
+#[automaton(crate::grammar::ExtlangTag)]
+#[newtype(
+	no_deref,
+	ord([u8], &[u8], str, &str)
+)]
+#[cfg_attr(
+	feature = "std",
+	newtype(ord(Vec<u8>, String), owned(ExtendedLangTagBuf, derive(PartialEq, Eq, PartialOrd, Ord, Hash)))
+)]
+#[cfg_attr(feature = "serde", newtype(serde))]
 pub struct ExtendedLangTag(str);
 
 impl PartialEq for ExtendedLangTag {
@@ -125,23 +119,20 @@ impl PartialEq for ExtendedLangTag {
 
 impl Eq for ExtendedLangTag {}
 
-str_eq!(ExtendedLangTag);
-str_eq!(ExtendedLangTagBuf);
-
 impl PartialOrd for ExtendedLangTag {
-	fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+	fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
 		Some(self.cmp(other))
 	}
 }
 
 impl Ord for ExtendedLangTag {
-	fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+	fn cmp(&self, other: &Self) -> core::cmp::Ordering {
 		utils::case_insensitive_cmp(self.as_bytes(), other.as_bytes())
 	}
 }
 
 impl Hash for ExtendedLangTag {
-	fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+	fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
 		utils::case_insensitive_hash(self.as_bytes(), state)
 	}
 }

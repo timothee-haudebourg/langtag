@@ -1,37 +1,33 @@
-use crate::utils::{self, str_eq};
-use static_regular_grammar::RegularGrammar;
-use std::{hash::Hash, ops::Range};
+use core::{hash::Hash, ops::Range};
 
-mod language;
-pub use language::*;
-
-mod script;
-pub use script::*;
-
-mod region;
-pub use region::*;
-
-mod variant;
-pub use variant::*;
+use crate::utils;
 
 mod extension;
-pub use extension::*;
-
+mod language;
 mod private_use;
+mod region;
+mod script;
+mod variant;
+
+pub use extension::*;
+pub use language::*;
 pub use private_use::*;
+pub use region::*;
+pub use script::*;
+pub use variant::*;
 
 /// Normal language tag.
-#[derive(RegularGrammar)]
-#[grammar(
-	file = "src/grammar.abnf",
-	entry_point = "langtag",
-	cache = "automata/normal.aut.cbor"
+#[derive(static_automata::Validate, str_newtype::StrNewType)]
+#[automaton(crate::grammar::Langtag)]
+#[newtype(
+	no_deref,
+	ord([u8], &[u8], str, &str)
 )]
-#[grammar(sized(
-	NormalLangTagBuf,
-	derive(Debug, Display, PartialEq, Eq, PartialOrd, Ord, Hash)
-))]
-#[cfg_attr(feature = "serde", grammar(serde))]
+#[cfg_attr(
+	feature = "std",
+	newtype(ord(Vec<u8>, String), owned(NormalLangTagBuf, derive(PartialEq, Eq, PartialOrd, Ord, Hash)))
+)]
+#[cfg_attr(feature = "serde", newtype(serde))]
 pub struct NormalLangTag(str);
 
 impl NormalLangTag {
@@ -48,7 +44,6 @@ impl NormalLangTag {
 
 	fn script_range(&self) -> Result<Range<usize>, usize> {
 		let language_end = self.language_end();
-		eprintln!("language_end = {language_end}");
 		let offset = language_end + 1;
 		let end = find_list_end(&self.0, offset, |i, segment| {
 			i == offset && Script::new(segment).is_ok()
@@ -72,7 +67,6 @@ impl NormalLangTag {
 			Ok(range) => range.end,
 			Err(i) => i,
 		};
-		eprintln!("script_end = {script_end}");
 
 		let offset = script_end + 1;
 		let end = find_list_end(&self.0, offset, |i, segment| {
@@ -97,7 +91,6 @@ impl NormalLangTag {
 			Ok(range) => range.end,
 			Err(i) => i,
 		};
-		eprintln!("region_end = {region_end}");
 
 		let offset = region_end + 1;
 		let end = find_list_end(&self.0, offset, |_, segment| Variant::new(segment).is_ok());
@@ -115,7 +108,6 @@ impl NormalLangTag {
 
 	fn extensions_range(&self) -> Range<usize> {
 		let variants_end = self.variants_range().end;
-		eprintln!("variants_end = {variants_end}");
 
 		let offset = variants_end + 1;
 		let end = find_list_end(&self.0, offset, |_, segment| {
@@ -131,7 +123,6 @@ impl NormalLangTag {
 
 	/// Returns the extension subtags.
 	pub fn extensions(&self) -> &Extensions {
-		eprintln!("looking for extensions in {}", &self.0);
 		unsafe { Extensions::new_unchecked(&self.0[self.extensions_range()]) }
 	}
 
@@ -151,7 +142,7 @@ impl NormalLangTag {
 			.map(|i| unsafe { PrivateUse::new_unchecked(&self.0[i..]) })
 	}
 
-	pub fn private_use_subtags(&self) -> PrivateUseIter {
+	pub fn private_use_subtags(&self) -> PrivateUseIter<'_> {
 		match self.private_use() {
 			Some(p) => p.iter(),
 			None => PrivateUseIter::empty(),
@@ -167,23 +158,20 @@ impl PartialEq for NormalLangTag {
 
 impl Eq for NormalLangTag {}
 
-str_eq!(NormalLangTag);
-str_eq!(NormalLangTagBuf);
-
 impl PartialOrd for NormalLangTag {
-	fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+	fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
 		Some(self.cmp(other))
 	}
 }
 
 impl Ord for NormalLangTag {
-	fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+	fn cmp(&self, other: &Self) -> core::cmp::Ordering {
 		utils::case_insensitive_cmp(self.as_bytes(), other.as_bytes())
 	}
 }
 
 impl Hash for NormalLangTag {
-	fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+	fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
 		utils::case_insensitive_hash(self.as_bytes(), state)
 	}
 }
@@ -209,11 +197,7 @@ fn find_list_end(string: &str, mut offset: usize, mut f: impl FnMut(usize, &str)
 	}
 
 	let subtag = &string[offset..];
-	if f(offset, subtag) {
-		string.len()
-	} else {
-		end
-	}
+	if f(offset, subtag) { string.len() } else { end }
 }
 
 fn find_segment_end(string: &str, offset: usize) -> usize {

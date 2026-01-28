@@ -1,8 +1,6 @@
 [package]
 name = "langtag"
-version = "0.4.0"
 authors = ["Timothée Haudebourg <author@haudebourg.net>"]
-edition = "2021"
 categories = ["parsing", "data-structures"]
 keywords = ["language", "tag", "langtag", "rfc"]
 description = "Language tags implementation following RFC 5646"
@@ -10,12 +8,20 @@ repository = "https://github.com/timothee-haudebourg/langtag"
 documentation = "https://docs.rs/langtag"
 license = "MIT/Apache-2.0"
 readme = "README.md"
+edition = "2024"
+version = "0.4.0"
 
 [features]
+# default = ["std"]
+
+## Enable owned/sized types.
+std = []
+
 ## Enable serialization/deserialization with `serde`.
 serde = ["dep:serde"]
 
 [dependencies]
-static-regular-grammar = "2.0.1"
-thiserror = "1.0.57"
+str-newtype = "2.0.0"
+static-automata = "1.0.2"
+thiserror = { version = "2.0.18", default-features = false }
 serde = { version = "1.0", features = ["derive"], optional = true }

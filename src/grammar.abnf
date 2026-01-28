@@ -9,14 +9,18 @@ langtag       = language
                *("-" extension)
                ["-" privateuse]
 
-language     = 2*3ALPHA             ; shortest ISO 639 code
+language      = primary             ; shortest ISO 639 code
                ["-" extlang]        ; sometimes followed by
                                     ; extended language subtags
               / 4ALPHA              ; or reserved for future use
               / 5*8ALPHA            ; or registered language subtag
 
-extlang       = 3ALPHA              ; selected ISO 639 codes
-                *2("-" 3ALPHA)      ; permanently reserved
+primary       = 2*3ALPHA
+
+extlang       = extlang-tag         ; selected ISO 639 codes
+                *2("-" extlang-tag) ; permanently reserved
+
+extlang-tag  = 3ALPHA
 
 script        = 4ALPHA              ; ISO 15924 code
 
@@ -26,7 +30,13 @@ region        = 2ALPHA              ; ISO 3166-1 code
 variant       = 5*8alphanum         ; registered variants
               / (DIGIT 3alphanum)
 
-extension     = singleton 1*("-" (2*8alphanum))
+variants      = [ variant *("-" variant) ]
+
+extension     = singleton 1*("-" extension-subtag)
+
+extension-subtag = 2*8alphanum
+
+extensions    = [ extension *("-" extension) ]
 
                                     ; Single alphanumerics
                                     ; "x" reserved for private use
@@ -36,7 +46,9 @@ singleton     = DIGIT               ; 0 - 9
               / %x61-77             ; a - w
               / %x79-7A             ; y - z
 
-privateuse    = "x" 1*("-" (1*8alphanum))
+privateuse    = "x" 1*("-" privateuse-subtag)
+
+privateuse-subtag = 1*8alphanum
 
 grandfathered = irregular           ; non-redundant tags registered
               / regular             ; during the RFC 3066 era

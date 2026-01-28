@@ -1,21 +1,23 @@
-use std::hash::Hash;
+use core::hash::Hash;
 
-use static_regular_grammar::RegularGrammar;
-
-use crate::utils::{self, str_eq};
+use crate::utils;
 
 /// Script subtag.
 ///
 /// Script subtags are used to indicate the script or writing system
 /// variations that distinguish the written forms of a language or its
 /// dialects.
-#[derive(RegularGrammar)]
-#[grammar(file = "src/grammar.abnf", entry_point = "script")]
-#[grammar(sized(
-	ScriptBuf,
-	derive(Debug, Display, PartialEq, Eq, PartialOrd, Ord, Hash)
-))]
-#[cfg_attr(feature = "serde", grammar(serde))]
+#[derive(static_automata::Validate, str_newtype::StrNewType)]
+#[automaton(crate::grammar::Script)]
+#[newtype(
+	no_deref,
+	ord([u8], &[u8], str, &str)
+)]
+#[cfg_attr(
+	feature = "std",
+	newtype(ord(Vec<u8>, String), owned(ScriptBuf, derive(PartialEq, Eq, PartialOrd, Ord, Hash)))
+)]
+#[cfg_attr(feature = "serde", newtype(serde))]
 pub struct Script(str);
 
 impl PartialEq for Script {
@@ -26,23 +28,20 @@ impl PartialEq for Script {
 
 impl Eq for Script {}
 
-str_eq!(Script);
-str_eq!(ScriptBuf);
-
 impl PartialOrd for Script {
-	fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+	fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
 		Some(self.cmp(other))
 	}
 }
 
 impl Ord for Script {
-	fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+	fn cmp(&self, other: &Self) -> core::cmp::Ordering {
 		utils::case_insensitive_cmp(self.as_bytes(), other.as_bytes())
 	}
 }
 
 impl Hash for Script {
-	fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+	fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
 		utils::case_insensitive_hash(self.as_bytes(), state)
 	}
 }

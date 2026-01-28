@@ -1,21 +1,23 @@
-use std::hash::Hash;
+use core::hash::Hash;
 
-use static_regular_grammar::RegularGrammar;
-
-use crate::utils::{self, str_eq};
+use crate::utils;
 
 /// Single variant subtag.
 ///
 /// Variant subtags are used to indicate additional, well-recognized
 /// variations that define a language or its dialects that are not
 /// covered by other available subtags.
-#[derive(RegularGrammar)]
-#[grammar(file = "src/grammar.abnf", entry_point = "variant")]
-#[grammar(sized(
-	VariantBuf,
-	derive(Debug, Display, PartialEq, Eq, PartialOrd, Ord, Hash)
-))]
-#[cfg_attr(feature = "serde", grammar(serde))]
+#[derive(static_automata::Validate, str_newtype::StrNewType)]
+#[automaton(crate::grammar::Variant)]
+#[newtype(
+	no_deref,
+	ord([u8], &[u8], str, &str)
+)]
+#[cfg_attr(
+	feature = "std",
+	newtype(ord(Vec<u8>, String), owned(VariantBuf, derive(PartialEq, Eq, PartialOrd, Ord, Hash)))
+)]
+#[cfg_attr(feature = "serde", newtype(serde))]
 pub struct Variant(str);
 
 impl PartialEq for Variant {
@@ -26,23 +28,20 @@ impl PartialEq for Variant {
 
 impl Eq for Variant {}
 
-str_eq!(Variant);
-str_eq!(VariantBuf);
-
 impl PartialOrd for Variant {
-	fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+	fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
 		Some(self.cmp(other))
 	}
 }
 
 impl Ord for Variant {
-	fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+	fn cmp(&self, other: &Self) -> core::cmp::Ordering {
 		utils::case_insensitive_cmp(self.as_bytes(), other.as_bytes())
 	}
 }
 
 impl Hash for Variant {
-	fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+	fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
 		utils::case_insensitive_hash(self.as_bytes(), state)
 	}
 }
@@ -51,25 +50,23 @@ impl Hash for Variant {
 ///
 /// Represents a list of variant subtags separated by a `-` character
 /// as found in a language tag.
-///
-/// ```abnf
-/// variants = [ variant *("-" variant) ]
-///
-/// variant  = 5*8alphanum       ; registered variants
-///          / (DIGIT 3alphanum)
-///
-/// alphanum = (ALPHA / DIGIT)   ; letters and numbers
-/// ```
-#[derive(RegularGrammar)]
-#[grammar(sized(
-	VariantsBuf,
-	derive(Debug, Display, PartialEq, Eq, PartialOrd, Ord, Hash)
-))]
-#[cfg_attr(feature = "serde", grammar(serde))]
+#[derive(static_automata::Validate, str_newtype::StrNewType)]
+#[automaton(crate::grammar::Variants)]
+#[newtype(
+	no_deref,
+	ord([u8], &[u8], str, &str)
+)]
+#[cfg_attr(
+	feature = "std",
+	newtype(ord(Vec<u8>, String), owned(VariantsBuf, derive(PartialEq, Eq, PartialOrd, Ord, Hash)))
+)]
+#[cfg_attr(feature = "serde", newtype(serde))]
 pub struct Variants(str);
 
 impl Variants {
-	pub fn iter(&self) -> VariantsIter {
+	pub const EMPTY: &Self = unsafe { Self::new_unchecked("") };
+
+	pub fn iter(&self) -> VariantsIter<'_> {
 		VariantsIter::new(&self.0)
 	}
 
@@ -90,23 +87,20 @@ impl PartialEq for Variants {
 
 impl Eq for Variants {}
 
-str_eq!(Variants);
-str_eq!(VariantsBuf);
-
 impl PartialOrd for Variants {
-	fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+	fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
 		Some(self.cmp(other))
 	}
 }
 
 impl Ord for Variants {
-	fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+	fn cmp(&self, other: &Self) -> core::cmp::Ordering {
 		utils::case_insensitive_cmp(self.as_bytes(), other.as_bytes())
 	}
 }
 
 impl Hash for Variants {
-	fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+	fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
 		utils::case_insensitive_hash(self.as_bytes(), state)
 	}
 }

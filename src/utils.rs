@@ -1,50 +1,10 @@
-use std::{
+use core::{
 	cmp::Ordering,
 	hash::{Hash, Hasher},
 };
 
-macro_rules! str_eq {
-	($ty:ident) => {
-		impl PartialEq<str> for $ty {
-			fn eq(&self, other: &str) -> bool {
-				crate::utils::case_insensitive_eq(self.as_bytes(), other.as_bytes())
-			}
-		}
-
-		impl<'a> PartialEq<&'a str> for $ty {
-			fn eq(&self, other: &&'a str) -> bool {
-				crate::utils::case_insensitive_eq(self.as_bytes(), other.as_bytes())
-			}
-		}
-
-		impl PartialEq<String> for $ty {
-			fn eq(&self, other: &String) -> bool {
-				crate::utils::case_insensitive_eq(self.as_bytes(), other.as_bytes())
-			}
-		}
-
-		impl PartialEq<$ty> for str {
-			fn eq(&self, other: &$ty) -> bool {
-				crate::utils::case_insensitive_eq(self.as_bytes(), other.as_bytes())
-			}
-		}
-
-		impl PartialEq<$ty> for String {
-			fn eq(&self, other: &$ty) -> bool {
-				crate::utils::case_insensitive_eq(self.as_bytes(), other.as_bytes())
-			}
-		}
-	};
-}
-
-pub(crate) use str_eq;
-
 pub fn into_smallcase(c: u8) -> u8 {
-	if c.is_ascii_uppercase() {
-		c + 0x20
-	} else {
-		c
-	}
+	if c.is_ascii_uppercase() { c + 0x20 } else { c }
 }
 
 pub fn case_insensitive_eq(a: &[u8], b: &[u8]) -> bool {

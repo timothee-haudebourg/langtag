@@ -1,9 +1,6 @@
-use core::fmt;
-use std::{hash::Hash, str::FromStr};
+use core::{fmt, hash::Hash};
 
-use static_regular_grammar::RegularGrammar;
-
-use crate::utils::{self, str_eq};
+use crate::utils;
 
 #[derive(Debug, thiserror::Error)]
 #[error("invalid extension identifier")]
@@ -41,7 +38,8 @@ impl Singleton {
 	}
 }
 
-impl FromStr for Singleton {
+#[cfg(feature = "std")]
+impl core::str::FromStr for Singleton {
 	type Err = InvalidSingleton<String>;
 
 	fn from_str(str: &str) -> Result<Self, InvalidSingleton<String>> {
@@ -108,13 +106,17 @@ impl fmt::Debug for Singleton {
 /// followed by associated subtags.
 /// For instance `a-subtag1-subtag2`.
 /// Each subtag of the extension is represented by the [`ExtensionSubtag`] type.
-#[derive(RegularGrammar)]
-#[grammar(file = "src/grammar.abnf", entry_point = "extension")]
-#[grammar(sized(
-	ExtensionBuf,
-	derive(Debug, Display, PartialEq, Eq, PartialOrd, Ord, Hash)
-))]
-#[cfg_attr(feature = "serde", grammar(serde))]
+#[derive(static_automata::Validate, str_newtype::StrNewType)]
+#[automaton(crate::grammar::Extension)]
+#[newtype(
+	no_deref,
+	ord([u8], &[u8], str, &str)
+)]
+#[cfg_attr(
+	feature = "std",
+	newtype(ord(Vec<u8>, String), owned(ExtensionBuf, derive(PartialEq, Eq, PartialOrd, Ord, Hash)))
+)]
+#[cfg_attr(feature = "serde", newtype(serde))]
 pub struct Extension(str);
 
 impl Extension {
@@ -122,7 +124,7 @@ impl Extension {
 		Singleton(self.0.as_bytes()[0])
 	}
 
-	pub fn iter(&self) -> ExtensionIter {
+	pub fn iter(&self) -> ExtensionIter<'_> {
 		ExtensionIter::new(&self.0)
 	}
 }
@@ -135,23 +137,20 @@ impl PartialEq for Extension {
 
 impl Eq for Extension {}
 
-str_eq!(Extension);
-str_eq!(ExtensionBuf);
-
 impl PartialOrd for Extension {
-	fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+	fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
 		Some(self.cmp(other))
 	}
 }
 
 impl Ord for Extension {
-	fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+	fn cmp(&self, other: &Self) -> core::cmp::Ordering {
 		utils::case_insensitive_cmp(self.as_bytes(), other.as_bytes())
 	}
 }
 
 impl Hash for Extension {
-	fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+	fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
 		utils::case_insensitive_hash(self.as_bytes(), state)
 	}
 }
@@ -196,33 +195,22 @@ impl<'a> Iterator for ExtensionIter<'a> {
 /// Individual extensions are represented by the [`Extension`] type,
 /// while extension subtags are represented by the [`ExtensionSubtag`]
 /// type.
-///
-/// # Grammar
-///
-/// ```abnf
-/// extensions = [ extension *("-" extension) ]
-///
-/// extension  = singleton 1*("-" (2*8alphanum))
-///
-/// ; Single alphanumerics
-/// ; "x" reserved for private use
-/// singleton  = DIGIT               ; 0 - 9
-///            / %x41-57             ; A - W
-///            / %x59-5A             ; Y - Z
-///            / %x61-77             ; a - w
-///            / %x79-7A             ; y - z
-///
-/// alphanum   = (ALPHA / DIGIT)     ; letters and numbers
-/// ```
-#[derive(RegularGrammar)]
-#[grammar(sized(
-	ExtensionsBuf,
-	derive(Debug, Display, PartialEq, Eq, PartialOrd, Ord, Hash)
-))]
-#[cfg_attr(feature = "serde", grammar(serde))]
+#[derive(static_automata::Validate, str_newtype::StrNewType)]
+#[automaton(crate::grammar::Extensions)]
+#[newtype(
+	no_deref,
+	ord([u8], &[u8], str, &str)
+)]
+#[cfg_attr(
+	feature = "std",
+	newtype(ord(Vec<u8>, String), owned(ExtensionsBuf, derive(PartialEq, Eq, PartialOrd, Ord, Hash)))
+)]
+#[cfg_attr(feature = "serde", newtype(serde))]
 pub struct Extensions(str);
 
 impl Extensions {
+	pub const EMPTY: &Self = unsafe { Self::new_unchecked("") };
+
 	pub fn get(&self, singleton: Singleton) -> Option<&Extension> {
 		let bytes = self.0.as_bytes();
 		let mut i = 0;
@@ -246,11 +234,11 @@ impl Extensions {
 		None
 	}
 
-	pub fn iter(&self) -> ExtensionsIter {
+	pub fn iter(&self) -> ExtensionsIter<'_> {
 		ExtensionsIter::new(&self.0)
 	}
 
-	pub fn iter_extension(&self, singleton: Singleton) -> ExtensionIter {
+	pub fn iter_extension(&self, singleton: Singleton) -> ExtensionIter<'_> {
 		self.get(singleton).map(Extension::iter).unwrap_or_default()
 	}
 }
@@ -263,23 +251,20 @@ impl PartialEq for Extensions {
 
 impl Eq for Extensions {}
 
-str_eq!(Extensions);
-str_eq!(ExtensionsBuf);
-
 impl PartialOrd for Extensions {
-	fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+	fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
 		Some(self.cmp(other))
 	}
 }
 
 impl Ord for Extensions {
-	fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+	fn cmp(&self, other: &Self) -> core::cmp::Ordering {
 		utils::case_insensitive_cmp(self.as_bytes(), other.as_bytes())
 	}
 }
 
 impl Hash for Extensions {
-	fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+	fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
 		utils::case_insensitive_hash(self.as_bytes(), state)
 	}
 }
@@ -318,20 +303,17 @@ impl<'a> Iterator for ExtensionsIter<'a> {
 /// Single extension subtag.
 ///
 /// Extension subtag found in a language tag extension.
-///
-/// # Grammar
-///
-/// ```abnf
-/// ExtensionSubtag = 2*8alphanum
-///
-/// alphanum        = (ALPHA / DIGIT) ; letters and numbers
-/// ```
-#[derive(RegularGrammar)]
-#[grammar(sized(
-	ExtensionSubtagBuf,
-	derive(Debug, Display, PartialEq, Eq, PartialOrd, Ord, Hash)
-))]
-#[cfg_attr(feature = "serde", grammar(serde))]
+#[derive(static_automata::Validate, str_newtype::StrNewType)]
+#[automaton(crate::grammar::ExtensionSubtag)]
+#[newtype(
+	no_deref,
+	ord([u8], &[u8], str, &str)
+)]
+#[cfg_attr(
+	feature = "std",
+	newtype(ord(Vec<u8>, String), owned(ExtensionSubtagBuf, derive(PartialEq, Eq, PartialOrd, Ord, Hash)))
+)]
+#[cfg_attr(feature = "serde", newtype(serde))]
 pub struct ExtensionSubtag(str);
 
 impl PartialEq for ExtensionSubtag {
@@ -342,23 +324,20 @@ impl PartialEq for ExtensionSubtag {
 
 impl Eq for ExtensionSubtag {}
 
-str_eq!(ExtensionSubtag);
-str_eq!(ExtensionSubtagBuf);
-
 impl PartialOrd for ExtensionSubtag {
-	fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+	fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
 		Some(self.cmp(other))
 	}
 }
 
 impl Ord for ExtensionSubtag {
-	fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+	fn cmp(&self, other: &Self) -> core::cmp::Ordering {
 		utils::case_insensitive_cmp(self.as_bytes(), other.as_bytes())
 	}
 }
 
 impl Hash for ExtensionSubtag {
-	fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+	fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
 		utils::case_insensitive_hash(self.as_bytes(), state)
 	}
 }
